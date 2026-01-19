@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { authenticatedPATCH } from '@/lib/auth/handlers';
+import { authenticatedPATCH, authenticatedDELETE } from '@/lib/auth/handlers';
 import { db } from '@/lib/db';
 import { z } from 'zod';
 
@@ -16,24 +16,24 @@ const updateAPIKeySchema = z.object({
  */
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   return authenticatedPATCH(request, async (req, apiKey) => {
     try {
-      const { id } = params;
+      const { id } = await params;
       const body = await req.json();
 
       // Validar dados de entrada
       const validationResult = updateAPIKeySchema.safeParse(body);
       if (!validationResult.success) {
-        return Response.json(
-          {
+        return new Response(
+          JSON.stringify({
             success: false,
             error: 'Invalid input data',
-            details: validationResult.error.errors,
+            details: validationResult.error.issues,
             code: 'VALIDATION_ERROR',
-          },
-          { status: 400 }
+          }),
+          { status: 400, headers: { 'Content-Type': 'application/json' } }
         );
       }
 
@@ -45,13 +45,13 @@ export async function PATCH(
       });
 
       if (!existingKey) {
-        return Response.json(
-          {
+        return new Response(
+          JSON.stringify({
             success: false,
             error: 'API Key not found',
             code: 'NOT_FOUND',
-          },
-          { status: 404 }
+          }),
+          { status: 404, headers: { 'Content-Type': 'application/json' } }
         );
       }
 
@@ -76,7 +76,7 @@ export async function PATCH(
         data: updateData,
       });
 
-      return Response.json({
+      return new Response(JSON.stringify({
         success: true,
         data: {
           id: updatedKey.id,
@@ -92,16 +92,16 @@ export async function PATCH(
           createdAt: updatedKey.createdAt,
           updatedAt: updatedKey.updatedAt,
         },
-      });
+      }), { headers: { 'Content-Type': 'application/json' } });
     } catch (error) {
       console.error('Error updating API key:', error);
-      return Response.json(
-        {
+      return new Response(
+        JSON.stringify({
           success: false,
           error: 'Failed to update API key',
           code: 'UPDATE_ERROR',
-        },
-        { status: 500 }
+        }),
+        { status: 500, headers: { 'Content-Type': 'application/json' } }
       );
     }
   }, { requireAuth: false });
@@ -112,11 +112,11 @@ export async function PATCH(
  */
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   return authenticatedDELETE(request, async (req, apiKey) => {
     try {
-      const { id } = params;
+      const { id } = await params;
 
       // Verificar se a API Key existe
       const existingKey = await db.aPIKey.findUnique({
@@ -124,13 +124,13 @@ export async function DELETE(
       });
 
       if (!existingKey) {
-        return Response.json(
-          {
+        return new Response(
+          JSON.stringify({
             success: false,
             error: 'API Key not found',
             code: 'NOT_FOUND',
-          },
-          { status: 404 }
+          }),
+          { status: 404, headers: { 'Content-Type': 'application/json' } }
         );
       }
 
@@ -139,19 +139,19 @@ export async function DELETE(
         where: { id },
       });
 
-      return Response.json({
+      return new Response(JSON.stringify({
         success: true,
         message: 'API Key deleted successfully',
-      });
+      }), { headers: { 'Content-Type': 'application/json' } });
     } catch (error) {
       console.error('Error deleting API key:', error);
-      return Response.json(
-        {
+      return new Response(
+        JSON.stringify({
           success: false,
           error: 'Failed to delete API key',
           code: 'DELETE_ERROR',
-        },
-        { status: 500 }
+        }),
+        { status: 500, headers: { 'Content-Type': 'application/json' } }
       );
     }
   }, { requireAuth: false });

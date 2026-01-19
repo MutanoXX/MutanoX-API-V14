@@ -48,7 +48,7 @@ export async function GET(
       });
 
       if (!apiKeyData) {
-        return Response.json(
+        return new Response(JSON.stringify(
           {
             success: false,
             error: 'API Key not found',
@@ -127,7 +127,7 @@ export async function GET(
         take: 10,
       });
 
-      return Response.json({
+      return new Response(JSON.stringify({
         success: true,
         data: {
           apiKey: {
@@ -175,7 +175,7 @@ export async function GET(
       });
     } catch (error) {
       console.error('Error fetching API key stats:', error);
-      return Response.json(
+      return new Response(JSON.stringify(
         {
           success: false,
           error: 'Failed to fetch API key stats',

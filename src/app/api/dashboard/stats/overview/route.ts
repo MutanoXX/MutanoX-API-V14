@@ -108,7 +108,7 @@ export async function GET(request: NextRequest) {
         ? ((totalRequests - totalErrors) / totalRequests) * 100
         : 100;
 
-      return Response.json({
+      return new Response(JSON.stringify({
         success: true,
         data: {
           period,
@@ -153,7 +153,7 @@ export async function GET(request: NextRequest) {
       });
     } catch (error) {
       console.error('Error fetching dashboard stats:', error);
-      return Response.json(
+      return new Response(JSON.stringify(
         {
           success: false,
           error: 'Failed to fetch dashboard stats',

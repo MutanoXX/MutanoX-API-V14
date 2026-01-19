@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
         },
       });
 
-      return Response.json({
+      return new Response(JSON.stringify({
         success: true,
         data: apiKeys.map((key) => ({
           id: key.id,
@@ -40,16 +40,16 @@ export async function GET(request: NextRequest) {
           logsCount: key._count.apiLogs,
           endpointsUsed: key._count.endpointUsage,
         })),
-      });
+      }), { headers: { 'Content-Type': 'application/json' } });
     } catch (error) {
       console.error('Error fetching API keys:', error);
-      return Response.json(
-        {
+      return new Response(
+        JSON.stringify({
           success: false,
           error: 'Failed to fetch API keys',
           code: 'FETCH_ERROR',
-        },
-        { status: 500 }
+        }),
+        { status: 500, headers: { 'Content-Type': 'application/json' } }
       );
     }
   }, { requireAuth: false }); // Dashboard não requer autenticação por API Key

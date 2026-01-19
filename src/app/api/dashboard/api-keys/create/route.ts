@@ -22,14 +22,14 @@ export async function POST(request: NextRequest) {
       // Validar dados de entrada
       const validationResult = createAPIKeySchema.safeParse(body);
       if (!validationResult.success) {
-        return Response.json(
-          {
+        return new Response(
+          JSON.stringify({
             success: false,
             error: 'Invalid input data',
-            details: validationResult.error.errors,
+            details: validationResult.error.issues,
             code: 'VALIDATION_ERROR',
-          },
-          { status: 400 }
+          }),
+          { status: 400, headers: { 'Content-Type': 'application/json' } }
         );
       }
 
@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
       });
 
       // Retornar API Key (somente uma vez)
-      return Response.json({
+      return new Response(JSON.stringify({
         success: true,
         data: {
           id: apiKeyRecord.id,
@@ -66,16 +66,16 @@ export async function POST(request: NextRequest) {
           expiresAt: apiKeyRecord.expiresAt,
           createdAt: apiKeyRecord.createdAt,
         },
-      }, { status: 201 });
+      }), { status: 201, headers: { 'Content-Type': 'application/json' } });
     } catch (error) {
       console.error('Error creating API key:', error);
-      return Response.json(
-        {
+      return new Response(
+        JSON.stringify({
           success: false,
           error: 'Failed to create API key',
           code: 'CREATE_ERROR',
-        },
-        { status: 500 }
+        }),
+        { status: 500, headers: { 'Content-Type': 'application/json' } }
       );
     }
   }, { requireAuth: false });

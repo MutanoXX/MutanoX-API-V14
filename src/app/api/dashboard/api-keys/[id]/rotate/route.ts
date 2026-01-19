@@ -8,11 +8,11 @@ import { generateAPIKey, hashAPIKey, API_KEY_PREFIX_LENGTH } from '@/lib/auth/ap
  */
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   return authenticatedPOST(request, async (req, apiKey) => {
     try {
-      const { id } = params;
+      const { id } = await params;
 
       // Verificar se a API Key existe
       const existingKey = await db.aPIKey.findUnique({
@@ -20,13 +20,13 @@ export async function POST(
       });
 
       if (!existingKey) {
-        return Response.json(
-          {
+        return new Response(
+          JSON.stringify({
             success: false,
             error: 'API Key not found',
             code: 'NOT_FOUND',
-          },
-          { status: 404 }
+          }),
+          { status: 404, headers: { 'Content-Type': 'application/json' } }
         );
       }
 
@@ -44,7 +44,7 @@ export async function POST(
         },
       });
 
-      return Response.json({
+      return new Response(JSON.stringify({
         success: true,
         data: {
           id: updatedKey.id,
@@ -57,16 +57,16 @@ export async function POST(
           expiresAt: updatedKey.expiresAt,
           rotatedAt: new Date(),
         },
-      });
+      }), { headers: { 'Content-Type': 'application/json' } });
     } catch (error) {
       console.error('Error rotating API key:', error);
-      return Response.json(
-        {
+      return new Response(
+        JSON.stringify({
           success: false,
           error: 'Failed to rotate API key',
           code: 'ROTATE_ERROR',
-        },
-        { status: 500 }
+        }),
+        { status: 500, headers: { 'Content-Type': 'application/json' } }
       );
     }
   }, { requireAuth: false });

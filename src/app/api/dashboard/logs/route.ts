@@ -93,7 +93,7 @@ export async function GET(request: NextRequest) {
         }),
       ]);
 
-      return Response.json({
+      return new Response(JSON.stringify({
         success: true,
         data: {
           logs: logs.map((log) => ({
@@ -121,20 +121,20 @@ export async function GET(request: NextRequest) {
             total,
             successCount,
             errorCount,
-            successRate: total > 0 ? ((successCount / total) * 100).toFixed(2) : 100,
+            successRate: total > 0 ? ((successCount / total) * 100).toFixed(2) : '100',
             avgResponseTime: avgResponseTime._avg.responseTime || 0,
           },
         },
-      });
+      }), { headers: { 'Content-Type': 'application/json' } });
     } catch (error) {
       console.error('Error fetching logs:', error);
-      return Response.json(
-        {
+      return new Response(
+        JSON.stringify({
           success: false,
           error: 'Failed to fetch logs',
           code: 'FETCH_ERROR',
-        },
-        { status: 500 }
+        }),
+        { status: 500, headers: { 'Content-Type': 'application/json' } }
       );
     }
   }, { requireAuth: false });
