@@ -30,3 +30,50 @@ model Post {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
+
+model APIKey {
+  id                String   @id @default(cuid())
+  name              String
+  keyHash           String   @unique
+  keyPrefix         String   // Primeiros 8 caracteres para exibição
+  isActive          Boolean  @default(true)
+  rateLimitEnabled  Boolean  @default(false)
+  rateLimitPerHour  Int?     // null = sem limite para API Keys válidas
+  lastUsedAt        DateTime?
+  lastUsedIp        String?
+  totalRequests     Int      @default(0)
+  totalErrors       Int      @default(0)
+  expiresAt         DateTime?
+  createdBy         String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  apiLogs           ApiLog[]
+  endpointUsage     EndpointUsage[]
+}
+
+model ApiLog {
+  id              String   @id @default(cuid())
+  apiKeyId        String
+  apiKey          APIKey   @relation(fields: [apiKeyId], references: [id], onDelete: Cascade)
+  endpoint        String
+  method          String
+  statusCode      Int
+  responseTime    Int      // em milissegundos
+  ipAddress       String?
+  userAgent       String?
+  requestBody     String?  // JSON da requisição (opcional)
+  timestamp       DateTime @default(now())
+}
+
+model EndpointUsage {
+  id              String   @id @default(cuid())
+  apiKeyId        String
+  apiKey          APIKey   @relation(fields: [apiKeyId], references: [id], onDelete: Cascade)
+  endpoint        String
+  requestCount    Int      @default(0)
+  errorCount      Int      @default(0)
+  totalResponseTime Int     @default(0)
+  lastUsedAt      DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  @@unique([apiKeyId, endpoint])
+}
