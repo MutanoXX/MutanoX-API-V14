@@ -15,9 +15,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "MutanoX API V14 - Dashboard",
-  description: "Sistema completo de autenticação e monitoramento de API Keys com dashboard moderno",
-  keywords: ["MutanoX", "API", "Dashboard", "API Keys", "Monitoramento", "Next.js", "TypeScript"],
+  title: "MutanoX API V14 - Dashboard Premium",
+  description: "Sistema completo de autenticação e monitoramento de API Keys com dashboard moderno - MutanoX Premium",
+  keywords: ["MutanoX", "API", "Dashboard", "API Keys", "Monitoramento", "Next.js", "TypeScript", "2026"],
   authors: [{ name: "MutanoXX" }],
   icons: {
     icon: "/logo.svg",
