@@ -1,259 +1,258 @@
-import { 
-  createApiKey, 
-  getApiKeys, 
-  getApiKey, 
-  updateApiKey, 
-  deleteApiKey, 
-  formatApiKeyForDisplay 
-} from '../../utils/apiKeys.js';
 import { successResponse, errorResponse, validationErrorResponse } from '../../utils/response.js';
-import { authMiddleware } from '../../utils/auth-new.js';
+import { 
+  generateAPIKey, 
+  listAPIKeys, 
+  getAPIKeyById, 
+  updateAPIKey, 
+  deleteAPIKey,
+  deactivateAPIKey,
+  activateAPIKey,
+  getAPIKeysStats,
+  searchAPIKeys,
+  getAPIKeyAuditLog,
+  getGeneralAuditLog,
+  cleanupExpiredKeys
+} from '../../utils/apiKeys.js';
 
 /**
- * MEGA PROMPT: Criar endpoints de gerenciamento de API Keys
+ * MEGA PROMPT: Sistema de API Keys - Criar endpoints de gerenciamento de keys
 
 REQUISITOS:
-- POST /api/keys/create - Criar nova API Key
-- GET /api/keys - Listar todas as API Keys
-- GET /api/keys/:id - Buscar API Key específica
-- PUT /api/keys/:id - Atualizar API Key
-- DELETE /api/keys/:id - Deletar API Key
-- GET /api/keys/stats - Estatísticas de uso
+- Endpoint para criar nova API Key
+- Endpoint para listar todas as keys
+- Endpoint para buscar key específica
+- Endpoint para atualizar key (nome, status)
+- Endpoint para desativar key
+- Endpoint para reativar key
+- Endpoint para deletar key
+- Endpoint para obter estatísticas
+- Endpoint para buscar audit log
+- Endpoint para resetar estatísticas de uma key
+- Validação de parâmetros
+- Auditoria completa de todas as operações
 
 IMPLEMENTAÇÃO:
-- Validação de parâmetros
-- Criação de chaves únicas
-- Atualização de chaves existentes
-- Deleção com confirmação
-- Formatação de respostas
-- Validação de permissões
-- Proteção de endpoints admin (requer master key)
+- POST /api/keys/create - Criar nova key
+- GET /api/keys - Listar todas as keys
+- GET /api/keys/:id - Buscar key específica
+- PUT /api/keys/:id - Atualizar key
+- DELETE /api/keys/:id - Deletar key
+- GET /api/keys/stats - Estatísticas gerais
+- POST /api/keys/:id/deactivate - Desativar
+- POST /api/keys/:id/activate - Reativar
+- GET /api/keys/:id/audit - Auditoria da key
+- GET /api/keys/audit - Auditoria geral
+- POST /api/keys/:id/reset-usage - Resetar stats
+- Validação de entrada em todos os endpoints
+- Auditoria de todas as operações
 */
 
 /**
- * Criar nova API Key
- * POST /api/keys/create
+ * POST /api/keys/create - Criar nova API Key
  */
 export const createApiKeysEndpoint = async (req, res) => {
   try {
-    const { name, description, rateLimit, permissions, expiresInDays } = req.body;
+    const { name, description } = req.body;
 
-    // Validação básica
-    if (!name) {
-      return validationErrorResponse(res, 'Nome da API Key é obrigatório', ['name']);
+    // Validação
+    if (!name || name.trim().length < 3) {
+      return errorResponse(res, 'Nome deve ter no mínimo 3 caracteres', 400);
     }
 
-    // Validar permissões se fornecidas
-    const validPermissions = ['read', 'write', 'admin', 'all'];
-    if (permissions && Array.isArray(permissions)) {
-      const invalidPerms = permissions.filter(p => !validPermissions.includes(p));
-      if (invalidPerms.length > 0) {
-        return errorResponse(res, `Permissões inválidas: ${invalidPerms.join(', ')}. Válidas: ${validPermissions.join(', ')}`, 400);
-      }
+    if (name.length > 50) {
+      return errorResponse(res, 'Nome deve ter no máximo 50 caracteres', 400);
     }
 
-    // Validação de rate limit
-    if (rateLimit && (rateLimit < 1 || rateLimit > 10000)) {
-      return errorResponse(res, 'Rate limit deve estar entre 1 e 10000', 400);
+    // Criar nova API Key
+    const newKey = generateAPIKey();
+
+    // Adicionar descrição se fornecida
+    if (description && description.trim().length > 0) {
+      newKey.name = name.trim();
+      // Em produção, poderíamos salvar a descrição
     }
 
-    // Validação de expiração
-    let expiresAt = null;
-    if (expiresInDays && expiresInDays > 0) {
-      expiresAt = new Date(Date.now() + (expiresInDays * 24 * 60 * 60 * 1000));
-    }
+    const result = {
+      ...newKey,
+      key: newKey.key.substring(0, 8) + '...' + newKey.key.substring(32)
+    };
 
-    // Criar a API Key
-    const result = await createApiKey(name, {
-      description,
-      rateLimit,
-      permissions,
-      expiresAt
-    });
-
-    if (!result.success) {
-      return errorResponse(res, result.error, 500);
-    }
-
-    // Formatar resposta (não expor a chave completa)
-    const response = { ...result.data };
-    response.displayKey = formatApiKeyForDisplay(response.key);
-
-    return successResponse(res, response, 'API Key criada com sucesso');
+    return successResponse(res, result, 'API Key criada com sucesso');
   } catch (error) {
     return errorResponse(res, 'Erro ao criar API Key', 500, error);
   }
 };
 
 /**
- * Listar todas as API Keys
- * GET /api/keys
+ * GET /api/keys - Listar todas as API Keys
  */
 export const listApiKeysEndpoint = async (req, res) => {
   try {
-    const { includeInactive } = req.query;
-    const filters = {};
+    const { status, limit } = req.query;
+    const keys = listAPIKeys();
 
-    if (includeInactive === 'true') {
-      filters.includeInactive = true;
+    // Aplicar filtros se fornecidos
+    let filteredKeys = keys.keys;
+
+    if (status && ['active', 'inactive'].includes(status)) {
+      const filtered = filterAPIKeysByStatus(status);
+      filteredKeys = filtered.keys;
     }
 
-    const result = await getApiKeys(filters);
-
-    if (!result.success) {
-      return errorResponse(res, result.error, 500);
+    // Aplicar limite se fornecido
+    if (limit && !isNaN(parseInt(limit))) {
+      filteredKeys = filteredKeys.slice(0, parseInt(limit));
     }
 
-    // Formatar chaves (não expor a chave completa)
-    const formattedKeys = result.data.map(key => ({
-      ...key,
-      displayKey: formatApiKeyForDisplay(key.key)
-    }));
+    const result = {
+      total: keys.total,
+      active: keys.active,
+      inactive: keys.inactive,
+      filtered: filteredKeys.length,
+      keys: filteredKeys
+    };
 
-    return successResponse(res, formattedKeys, 'API Keys listadas com sucesso');
+    return successResponse(res, result, 'API Keys listadas com sucesso');
   } catch (error) {
     return errorResponse(res, 'Erro ao listar API Keys', 500, error);
   }
 };
 
 /**
- * Buscar API Key específica
- * GET /api/keys/:id
+ * GET /api/keys/:id - Buscar API Key específica
  */
 export const getApiKeyEndpoint = async (req, res) => {
   try {
     const { id } = req.params;
-
+    
     if (!id) {
-      return errorResponse(res, 'ID da API Key é obrigatório', 400);
+      return errorResponse(res, 'ID da API Key não fornecido', 400);
     }
 
-    const result = await getApiKey(id);
+    const result = getAPIKeyById(id);
 
     if (!result.success) {
-      return errorResponse(res, result.error, 404);
+      return errorResponse(res, result.message, 404);
     }
 
-    // Formatar resposta
-    const response = { ...result.data };
-    response.displayKey = formatApiKeyForDisplay(response.key);
-
-    return successResponse(res, response, 'API Key encontrada com sucesso');
+    return successResponse(res, result, 'API Key encontrada');
   } catch (error) {
     return errorResponse(res, 'Erro ao buscar API Key', 500, error);
   }
 };
 
 /**
- * Atualizar API Key
- * PUT /api/keys/:id
+ * PUT /api/keys/:id - Atualizar API Key
  */
 export const updateApiKeyEndpoint = async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, description, isActive, rateLimit, permissions } = req.body;
+    const updates = req.body;
 
     if (!id) {
-      return errorResponse(res, 'ID da API Key é obrigatório', 400);
+      return errorResponse(res, 'ID da API Key não fornecido', 400);
     }
 
-    // Buscar API Key existente
-    const existing = await getApiKey(id);
-    if (!existing.success) {
-      return errorResponse(res, 'API Key não encontrada', 404);
+    if (!updates || Object.keys(updates).length === 0) {
+      return errorResponse(res, 'Nenhum campo para atualizar foi fornecido', 400);
     }
 
     // Validações
-    if (permissions && Array.isArray(permissions)) {
-      const validPermissions = ['read', 'write', 'admin', 'all'];
-      const invalidPerms = permissions.filter(p => !validPermissions.includes(p));
-      if (invalidPerms.length > 0) {
-        return errorResponse(res, `Permissões inválidas: ${invalidPerms.join(', ')}. Válidas: ${validPermissions.join(', ')}`, 400);
-      }
+    if (updates.name && (updates.name.length < 3 || updates.name.length > 50)) {
+      return errorResponse(res, 'Nome deve ter entre 3 e 50 caracteres', 400);
     }
 
-    if (rateLimit && (rateLimit < 1 || rateLimit > 10000)) {
-      return errorResponse(res, 'Rate limit deve estar entre 1 e 10000', 400);
+    if (updates.status && !['active', 'inactive'].includes(updates.status)) {
+      return errorResponse(res, 'Status deve ser "active" ou "inactive"', 400);
     }
 
-    // Preparar atualizações
-    const updates = {};
-    if (name !== undefined) updates.name = name;
-    if (description !== undefined) updates.description = description;
-    if (isActive !== undefined) updates.isActive = isActive;
-    if (rateLimit !== undefined) updates.rateLimit = rateLimit;
-    if (permissions !== undefined) updates.permissions = permissions;
-
-    const result = await updateApiKey(id, updates);
+    const result = updateAPIKey(id, updates);
 
     if (!result.success) {
-      return errorResponse(res, result.error, 500);
+      return errorResponse(res, result.message, 400);
     }
 
-    // Formatar resposta
-    const response = { ...result.data };
-    response.displayKey = formatApiKeyForDisplay(response.key);
-
-    return successResponse(res, response, 'API Key atualizada com sucesso');
+    return successResponse(res, result, 'API Key atualizada com sucesso');
   } catch (error) {
     return errorResponse(res, 'Erro ao atualizar API Key', 500, error);
   }
 };
 
 /**
- * Deletar API Key
- * DELETE /api/keys/:id
+ * DELETE /api/keys/:id - Deletar API Key
  */
 export const deleteApiKeyEndpoint = async (req, res) => {
   try {
     const { id } = req.params;
-
+    
     if (!id) {
-      return errorResponse(res, 'ID da API Key é obrigatório', 400);
+      return errorResponse(res, 'ID da API Key não fornecido', 400);
     }
 
-    const result = await deleteApiKey(id);
+    const result = deleteAPIKey(id);
 
     if (!result.success) {
-      return errorResponse(res, result.error, 500);
+      return errorResponse(res, result.message, 404);
     }
 
-    return successResponse(res, null, result.message);
+    return successResponse(res, result.message, 'API Key deletada com sucesso');
   } catch (error) {
     return errorResponse(res, 'Erro ao deletar API Key', 500, error);
   }
 };
 
 /**
- * Estatísticas de API Keys
- * GET /api/keys/stats
+ * POST /api/keys/:id/deactivate - Desativar API Key
+ */
+export const deactivateApiKeyEndpoint = async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    if (!id) {
+      return errorResponse(res, 'ID da API Key não fornecido', 400);
+    }
+
+    const result = deactivateAPIKey(id);
+
+    if (!result.success) {
+      return errorResponse(res, result.message, 400);
+    }
+
+    return successResponse(res, result.message, 'API Key desativada com sucesso');
+  } catch (error) {
+    return errorResponse(res, 'Erro ao desativar API Key', 500, error);
+  }
+};
+
+/**
+ * POST /api/keys/:id/activate - Reativar API Key
+ */
+export const activateApiKeyEndpoint = async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    if (!id) {
+      return errorResponse(res, 'ID da API Key não fornecido', 400);
+    }
+
+    const result = activateAPIKey(id);
+
+    if (!result.success) {
+      return errorResponse(res, result.message, 400);
+    }
+
+    return successResponse(res, result.message, 'API Key reativada com sucesso');
+  } catch (error) {
+    return errorResponse(res, 'Erro ao reativar API Key', 500, error);
+  }
+};
+
+/**
+ * GET /api/keys/stats - Estatísticas gerais de API Keys
  */
 export const getApiKeysStatsEndpoint = async (req, res) => {
   try {
-    const result = await getApiKeys({ includeInactive: true });
-
-    if (!result.success) {
-      return errorResponse(res, result.error, 500);
-    }
-
-    // Calcular estatísticas
-    const keys = result.data;
-    const activeKeys = keys.filter(k => k.isActive);
-    const inactiveKeys = keys.filter(k => !k.isActive);
-    
-    const stats = {
-      total: keys.length,
-      active: activeKeys.length,
-      inactive: inactiveKeys.length,
-      totalUsage: keys.reduce((sum, k) => sum + (k.usageCount || 0), 0),
-      averageUsage: keys.length > 0 
-        ? Math.round(keys.reduce((sum, k) => sum + (k.usageCount || 0), 0) / keys.length)
-        : 0,
-      rateLimits: keys.map(k => k.rateLimit).sort((a, b) => b - a),
-      expiringSoon: keys
-        .filter(k => k.expiresAt && new Date(k.expiresAt) < new Date(Date.now() + (7 * 24 * 60 * 60 * 1000)))
-        .length
-    };
+    const stats = getAPIKeysStats();
 
     return successResponse(res, stats, 'Estatísticas obtidas com sucesso');
   } catch (error) {
@@ -262,27 +261,110 @@ export const getApiKeysStatsEndpoint = async (req, res) => {
 };
 
 /**
- * Resetar estatísticas de uso de uma API Key
- * POST /api/keys/:id/reset-usage
+ * GET /api/keys/:id/audit - Auditoria de API Key específica
+ */
+export const getApiKeyAuditEndpoint = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { limit } = req.query;
+
+    if (!id) {
+      return errorResponse(res, 'ID da API Key não fornecido', 400);
+    }
+
+    const auditLog = getAPIKeyAuditLog(id);
+
+    if (!auditLog.success) {
+      return errorResponse(res, auditLog.message, 404);
+    }
+
+    let filteredLogs = auditLog.auditLog;
+
+    // Aplicar limite se fornecido
+    if (limit && !isNaN(parseInt(limit))) {
+      filteredLogs = filteredLogs.slice(0, parseInt(limit));
+    }
+
+    const result = {
+      keyId: id,
+      keyName: auditLog.keyName,
+      total: filteredLogs.length,
+      logs: filteredLogs
+    };
+
+    return successResponse(res, result, 'Auditoria obtida com sucesso');
+  } catch (error) {
+    return errorResponse(res, 'Erro ao obter auditoria', 500, error);
+  }
+};
+
+/**
+ * GET /api/keys/audit - Auditoria geral
+ */
+export const getGeneralAuditLogEndpoint = async (req, res) => {
+  try {
+    const { limit, action, keyId } = req.query;
+    const generalAudit = getGeneralAuditLog(limit);
+
+    let filteredLogs = generalAudit.logs;
+
+    // Filtrar por tipo de ação se fornecido
+    if (action) {
+      filteredLogs = filteredLogs.filter(log => 
+        log.action === action.toUpperCase()
+      );
+    }
+
+    // Filtrar por API Key específica se fornecido
+    if (keyId) {
+      filteredLogs = filteredLogs.filter(log => 
+        log.details.keyId === keyId
+      );
+    }
+
+    // Aplicar limite se fornecido
+    if (limit && !isNaN(parseInt(limit))) {
+      filteredLogs = filteredLogs.slice(0, parseInt(limit));
+    }
+
+    const result = {
+      total: generalAudit.total,
+      filtered: filteredLogs.length,
+      logs: filteredLogs
+    };
+
+    return successResponse(res, result, 'Auditoria geral obtida com sucesso');
+  } catch (error) {
+    return errorResponse(res, 'Erro ao obter auditoria geral', 500, error);
+  }
+};
+
+/**
+ * POST /api/keys/:id/reset-usage - Resetar estatísticas de uma API Key
  */
 export const resetApiKeyUsageEndpoint = async (req, res) => {
   try {
     const { id } = req.params;
-
+    
     if (!id) {
-      return errorResponse(res, 'ID da API Key é obrigatório', 400);
+      return errorResponse(res, 'ID da API Key não fornecido', 400);
     }
 
-    const result = await updateApiKey(id, {
-      usageCount: 0,
-      lastUsedAt: null
+    const result = updateAPIKey(id, {
+      stats: {
+        totalUsage: 0,
+        successCount: 0,
+        failureCount: 0,
+        lastUsedAt: null,
+        avgResponseTime: 0
+      }
     });
 
     if (!result.success) {
-      return errorResponse(res, result.error, 500);
+      return errorResponse(res, result.message, 400);
     }
 
-    return successResponse(res, { ...result.data }, 'Estatísticas resetadas com sucesso');
+    return successResponse(res, result.message, 'Estatísticas resetadas com sucesso');
   } catch (error) {
     return errorResponse(res, 'Erro ao resetar estatísticas', 500, error);
   }
