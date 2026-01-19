@@ -53,10 +53,10 @@ npm start
 cd mutano-x-api/dashboard
 
 # Instalar dependências do dashboard
-bun install
+npm install
 
 # Iniciar o servidor do dashboard
-bun start
+npm start
 
 # Dashboard estará disponível em: http://localhost:3003
 ```

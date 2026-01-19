@@ -111,6 +111,13 @@ A API principal já está configurada para enviar logs automaticamente para o da
 - **Vanilla JS**: Frontend sem frameworks
 - **WebSocket**: Comunicação bidirecional
 
+## 📝 Notas Importantes
+
+- O dashboard armazena métricas em memória. Reinicializações do servidor irão perder todos os dados.
+- Para ambientes de produção, considere implementar persistência (Redis, MongoDB, etc.)
+- O CORS está configurado para aceitar todas as origens. Para produção, restrinja a origens específicas.
+- O WebSocket não requer autenticação. Para produção, implemente autenticação adequada.
+
 ## 🔌 API do Dashboard
 
 ### Endpoints Disponíveis

@@ -69,26 +69,43 @@ export const chatAI = async (req, res) => {
         });
 
         if (!response.ok) {
-          throw new Error(`External API error: ${response.status}`);
+          const errorText = await response.text();
+          throw new Error(`External API error: ${response.status} - ${errorText}`);
         }
 
         // Stream the response
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
+        let responseSent = false;
 
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
 
-          const chunk = decoder.decode(value);
-          res.write(chunk);
+            const chunk = decoder.decode(value);
+            if (!responseSent && res.writable) {
+              res.write(chunk);
+              responseSent = true;
+            }
+          }
+        } catch (streamError) {
+          console.error('Stream reading error:', streamError);
+          if (!responseSent && res.writable) {
+            res.write(`data: {"error": "${streamError.message}"}\n\n`);
+          }
+        } finally {
+          if (res.writable) {
+            res.end();
+          }
         }
-
-        res.end();
       } catch (error) {
         console.error('Streaming error:', error);
-        res.write(`data: {"error": "${error.message}"}\n\n`);
-        res.end();
+        if (res.writable) {
+          // Tentar enviar mensagem de erro no formato SSE
+          res.write(`data: {"error": "${error.message}"}\n\n`);
+          res.end();
+        }
       }
 
     } else {

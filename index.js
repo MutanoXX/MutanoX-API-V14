@@ -38,7 +38,11 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(logger);
-app.use(loggingMiddleware); // Dashboard logging middleware
+
+// Dashboard logging middleware - Logs todas as requisições para o dashboard em tempo real
+// Nota: Este middleware é aplicado globalmente. Para logar apenas endpoints /api/*,
+// mova esta linha depois da definição dos endpoints de sistema (/health, /)
+app.use(loggingMiddleware);
 
 // Rate limiting
 const limiter = rateLimit({
