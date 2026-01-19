@@ -1,0 +1,18 @@
+{
+  "name": "mutanox-api-dashboard",
+  "version": "1.0.0",
+  "description": "Advanced API Dashboard with real-time monitoring and interactive documentation",
+  "main": "src/server.js",
+  "type": "module",
+  "scripts": {
+    "start": "bun run src/server.js",
+    "dev": "bun --hot src/server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "socket.io": "^4.7.2",
+    "cors": "^2.8.5",
+    "chart.js": "^4.4.0",
+    "date-fns": "^2.30.0"
+  }
+}
