@@ -3,11 +3,11 @@ import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import { logger, log } from './utils/logger.js';
-import { loggingMiddleware } from './utils/dashboard-logger.js';
-import { authMiddleware, optionalAuthMiddleware } from './utils/auth.js';
+import { apiKeyAuthMiddleware, apiLoggingMiddleware, streamingLoggingMiddleware } from './utils/api-key-auth.js';
 
-// Import auth endpoints
-import { login, verifyTokenEndpoint, logout } from './endpoints/auth/login.js';
+// Import API Keys endpoints
+import { generateApiKey, listApiKeys, revokeApiKey, activateApiKey, deleteApiKey, getApiKeyStats } from './endpoints/api-keys/manage.js';
+import { getGlobalStats, clearOldLogs } from './endpoints/api-keys/stats.js';
 
 // Import endpoints
 import { bypassCloudflare } from './endpoints/tools/bypass.js';
@@ -43,28 +43,19 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(logger);
 
+// API Logging middleware - Registra requisições de endpoints normais
+app.use(apiLoggingMiddleware);
+
 // Dashboard logging middleware - Logs todas as requisições para o dashboard em tempo real
-// Nota: Este middleware é aplicado globalmente. Para logar apenas endpoints /api/*,
-// mova esta linha depois da definição dos endpoints de sistema (/health, /)
 app.use(loggingMiddleware);
 
-// Rate limiting
+// Rate limiting global (para requisições sem API Key válida)
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 100, // limit each IP to 100 requests per windowMs
   message: {
     success: false,
     message: 'Too many requests from this IP, please try again later.'
-  }
-});
-
-// Rate limiting específico para login (mais restrito)
-const loginLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 10, // limit each IP to 10 login attempts per windowMs
-  message: {
-    success: false,
-    message: 'Muitas tentativas de login. Tente novamente mais tarde.'
   }
 });
 
@@ -78,15 +69,22 @@ app.get('/', (req, res) => {
     description: 'Premium API with multiple endpoints for various services',
     author: 'MutanoX',
     authentication: {
+      type: 'API Key',
       required: true,
-      loginEndpoint: '/api/auth/login',
-      method: 'POST',
-      credentials: {
-        username: 'ADMIN',
-        password: 'MutanoX3397'
-      }
+      headerName: 'X-API-Key',
+      documentation: '/api/api-keys/docs'
     },
     endpoints: {
+      apiKeys: {
+        'POST /api/api-keys/generate': 'Gerar nova API Key',
+        'GET /api/api-keys/list': 'Listar todas as API Keys',
+        'POST /api/api-keys/revoke/:keyId': 'Revogar API Key',
+        'POST /api/api-keys/activate/:keyId': 'Ativar API Key',
+        'DELETE /api/api-keys/delete/:keyId': 'Deletar API Key',
+        'GET /api/api-keys/stats/:keyId': 'Estatísticas da API Key',
+        'GET /api/api-keys/global-stats': 'Estatísticas globais',
+        'DELETE /api/api-keys/clear-logs': 'Limpar logs antigos'
+      },
       tools: {
         '/api/tools/bypass': 'Cloudflare Bypass',
         '/api/tools/stalkDiscord': 'Discord User Stalk'
@@ -111,11 +109,6 @@ app.get('/', (req, res) => {
         '/api/br/consultarcpf': 'CPF Query'
       }
     },
-    auth: {
-      '/api/auth/login': 'Login (POST)',
-      '/api/auth/verify': 'Verify Token (POST)',
-      '/api/auth/logout': 'Logout (POST)'
-    },
     documentation: 'See README.md for detailed documentation'
   });
 });
@@ -130,77 +123,92 @@ app.get('/health', (req, res) => {
   });
 });
 
-// ==================== AUTH ENDPOINTS ====================
+// ==================== API KEYS ENDPOINTS ====================
 
-// Login - Sem autenticação requerida
-app.post('/api/auth/login', loginLimiter, login);
+// Gerar nova API Key
+app.post('/api/api-keys/generate', apiKeyAuthMiddleware, generateApiKey);
 
-// Verify Token - Sem autenticação requerida
-app.post('/api/auth/verify', verifyTokenEndpoint);
+// Listar todas as API Keys
+app.get('/api/api-keys/list', apiKeyAuthMiddleware, listApiKeys);
 
-// Logout - Requer autenticação
-app.post('/api/auth/logout', authMiddleware, logout);
+// Revogar API Key
+app.post('/api/api-keys/revoke/:keyId', apiKeyAuthMiddleware, revokeApiKey);
+
+// Ativar API Key
+app.post('/api/api-keys/activate/:keyId', apiKeyAuthMiddleware, activateApiKey);
+
+// Deletar API Key
+app.delete('/api/api-keys/delete/:keyId', apiKeyAuthMiddleware, deleteApiKey);
+
+// Estatísticas de uma API Key específica
+app.get('/api/api-keys/stats/:keyId', apiKeyAuthMiddleware, getApiKeyStats);
+
+// Estatísticas globais
+app.get('/api/api-keys/global-stats', apiKeyAuthMiddleware, getGlobalStats);
+
+// Limpar logs antigos
+app.delete('/api/api-keys/clear-logs', apiKeyAuthMiddleware, clearOldLogs);
 
 // ==================== TOOLS ENDPOINTS ====================
 
 // Cloudflare Bypass
-app.get('/api/tools/bypass', authMiddleware, bypassCloudflare);
+app.get('/api/tools/bypass', apiKeyAuthMiddleware, bypassCloudflare);
 
 // Discord Stalk
-app.get('/api/tools/stalkDiscord', authMiddleware, stalkDiscord);
+app.get('/api/tools/stalkDiscord', apiKeyAuthMiddleware, stalkDiscord);
 
 // ==================== AI ENDPOINTS ====================
 
 // AI Chat (GET and POST for streaming)
-app.get('/api/ai/chat', authMiddleware, chatAI);
-app.post('/api/ai/chat', authMiddleware, chatAI);
+app.get('/api/ai/chat', apiKeyAuthMiddleware, chatAI);
+app.post('/api/ai/chat', apiKeyAuthMiddleware, chatAI);
 
 // Perplexity AI
-app.get('/api/ai/perplexity', authMiddleware, perplexityAI);
+app.get('/api/ai/perplexity', apiKeyAuthMiddleware, perplexityAI);
 
 // Cici AI
-app.get('/api/ai/cici', authMiddleware, ciciAI);
+app.get('/api/ai/cici', apiKeyAuthMiddleware, ciciAI);
 
 // Felo AI
-app.get('/api/ai/felo', authMiddleware, feloAI);
+app.get('/api/ai/felo', apiKeyAuthMiddleware, feloAI);
 
 // Jeeves AI
-app.get('/api/ai/jeeves', authMiddleware, jeevesAI);
+app.get('/api/ai/jeeves', apiKeyAuthMiddleware, jeevesAI);
 
 // ==================== SEARCH ENDPOINTS ====================
 
 // Brainly Search
-app.get('/api/search/brainly', authMiddleware, brainlySearch);
+app.get('/api/search/brainly', apiKeyAuthMiddleware, brainlySearch);
 
 // Douyin Search
-app.get('/api/search/douyin', authMiddleware, douyinSearch);
+app.get('/api/search/douyin', apiKeyAuthMiddleware, douyinSearch);
 
 // GitHub Search
-app.get('/api/search/github', authMiddleware, githubSearch);
+app.get('/api/search/github', apiKeyAuthMiddleware, githubSearch);
 
 // Google Image Search
-app.get('/api/search/gimage', authMiddleware, googleImageSearch);
+app.get('/api/search/gimage', apiKeyAuthMiddleware, googleImageSearch);
 
 // ==================== BRAZIL ENDPOINTS ====================
 
 // Free Fire Info
-app.get('/api/br/infoff', authMiddleware, getFreeFireInfo);
+app.get('/api/br/infoff', apiKeyAuthMiddleware, getFreeFireInfo);
 
 // Phone Number Query
-app.get('/api/br/numero', authMiddleware, queryPhone);
+app.get('/api/br/numero', apiKeyAuthMiddleware, queryPhone);
 
 // Full Name Query
-app.get('/api/br/nome-completo', authMiddleware, queryFullName);
+app.get('/api/br/nome-completo', apiKeyAuthMiddleware, queryFullName);
 
 // CPF Query
-app.get('/api/br/consultarcpf', authMiddleware, queryCPF);
+app.get('/api/br/consultarcpf', apiKeyAuthMiddleware, queryCPF);
 
 // 404 handler
 app.use((req, res) => {
   res.status(404).json({
     success: false,
     message: 'Endpoint not found',
-    availableEndpoints: '/health',
+    availableEndpoints: '/health, /api/api-keys/*',
     documentation: 'See README.md for detailed documentation'
   });
 });
@@ -219,6 +227,7 @@ app.use((err, req, res, next) => {
 app.listen(PORT, () => {
   log.info(`🚀 MutanoX-API v14 running on port ${PORT}`);
   log.info(`📚 Documentation available at http://localhost:${PORT}/`);
+  log.info(`🔑 Sistema de autenticação: API Keys ativado`);
 });
 
 export default app;
