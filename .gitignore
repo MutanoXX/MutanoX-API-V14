@@ -47,3 +47,14 @@ test
 prompt
 
 server.log
+
+# ZAI system files (not needed for API deployment)
+skills/
+download/
+examples/
+
+# database
+db/
+*.db
+*.db-shm
+*.db-wal
