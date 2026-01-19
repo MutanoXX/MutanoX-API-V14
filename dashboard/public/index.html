@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MutanoX-API Dashboard v14</title>
+    <title>MutanoX-API Dashboard v14 - API Keys</title>
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
@@ -24,6 +24,7 @@
             --dark-lighter: #312e81;
             --light: #f3f4f6;
             --white: #ffffff;
+            --gray: #6b7280;
         }
 
         body {
@@ -40,191 +41,453 @@
         }
 
         header {
-            background: rgba(255, 255, 255, 0.1);
+            background: rgba(255, 255, 255, 0.05);
             backdrop-filter: blur(10px);
             border-radius: 16px;
             padding: 24px;
             margin-bottom: 24px;
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255,255,0.1);
         }
 
-        h1 {
-            font-size: 2.5rem;
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+
+        .logo {
+            font-size: 2rem;
             background: linear-gradient(135deg, var(--primary), var(--secondary));
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
-            margin-bottom: 8px;
+            font-weight: 700;
+            margin-bottom: 4px;
         }
 
-        .subtitle {
-            color: rgba(255, 255, 255, 0.7);
-            font-size: 1.1rem;
-        }
-
-        .connection-status {
-            display: inline-flex;
+        .connection-info {
+            display: flex;
+            gap: 16px;
             align-items: center;
-            gap: 8px;
-            padding: 8px 16px;
-            border-radius: 20px;
-            background: rgba(255, 255, 255, 0.1);
             font-size: 0.9rem;
+            color: rgba(255,255,255,0.7);
         }
 
-        .connection-indicator {
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-            background: var(--danger);
-            animation: pulse 2s infinite;
+        .connection-badge {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
         }
 
-        .connection-indicator.connected {
+        .connection-badge.online {
             background: var(--success);
+            color: var(--white);
         }
 
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
+        .connection-badge.offline {
+            background: var(--danger);
+            color: var(--white);
         }
 
         .tabs {
             display: flex;
-            gap: 12px;
-            margin-bottom: 24px;
+            gap: 8px;
             flex-wrap: wrap;
+            margin-bottom: 24px;
         }
 
         .tab-btn {
             padding: 12px 24px;
-            background: rgba(255, 255, 255, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: rgba(255, 255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
             border-radius: 12px;
             color: var(--light);
             cursor: pointer;
             transition: all 0.3s;
-            font-size: 1rem;
+            font-size: 0.95rem;
             font-weight: 500;
         }
 
         .tab-btn:hover {
-            background: rgba(255, 255, 255, 0.2);
+            background: rgba(255,255,255,0.1);
             transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
         }
 
         .tab-btn.active {
             background: linear-gradient(135deg, var(--primary), var(--secondary));
             border-color: transparent;
-            box-shadow: 0 4px 15px rgba(99, 102, 241, 0.4);
+            color: var(--white);
+            box-shadow: 0 4px 12px rgba(99, 102,241,0.4);
         }
 
         .tab-content {
             display: none;
+        animation: fadeIn 0.3s ease-in;
         }
 
         .tab-content.active {
             display: block;
         }
 
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .content-wrapper {
+            background: rgba(255,255,255,0.05);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            padding: 24px;
+            border: 1px solid rgba(255,255,255,0.1);
+            min-height: calc(100vh - 200px);
+        }
+
+        .section-title {
+            font-size: 1.5rem;
+            color: var(--white);
+            margin-bottom: 24px;
+            font-weight: 600;
+        }
+
         .stats-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 20px;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
             margin-bottom: 24px;
         }
 
         .stat-card {
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(10px);
-            border-radius: 16px;
-            padding: 24px;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            transition: all 0.3s;
+            background: rgba(255,255,255,0.05);
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            border: 1px solid rgba(255,255,255,0.1);
         }
 
-        .stat-card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
-        }
-
-        .stat-label {
-            color: rgba(255, 255, 255, 0.7);
-            font-size: 0.9rem;
+        .stat-icon {
+            font-size: 2.5rem;
             margin-bottom: 8px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
         }
 
         .stat-value {
-            font-size: 2.5rem;
+            font-size: 2rem;
             font-weight: 700;
-            background: linear-gradient(135deg, var(--white), rgba(255, 255, 255, 0.8));
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
+            padding: 4px 12px;
+            border-radius: 8px;
         }
 
-        .charts-grid {
+        .stat-label {
+            font-size: 0.9rem;
+            color: rgba(255,,255,255,0.7);
+            margin-top: 8px;
+        }
+
+        .api-keys-section {
+            margin-bottom: 32px;
+        }
+
+        .api-keys-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .search-box {
+            flex: 1;
+            min-width: 200px;
+            padding: 12px 16px;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 12px;
+            color: var(--light);
+            font-size: 0.95rem;
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: 10px 12px;
+            background: rgba(0,0,0,0,0);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 8px;
+            color: var(--light);
+            font-size: 0.95rem;
+        }
+
+        .search-box input:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .btn {
+            padding: 12px 24px;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            border: none;
+            border-radius: 12px;
+            color: var(--white);
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(99,102,241,0.4);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-secondary {
+            background: rgba(255,255,255,0.1);
+            color: var(--light);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255,255,255,0.15);
+        color: var(--white);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        .btn-danger {
+            background: var(--danger);
+        color: var(--white);
+        }
+
+        .btn-danger:hover {
+            background: #dc2626;
+            transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(220, 38, 38,0.4);
+        }
+
+        .api-keys-list {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
-            gap: 20px;
-            margin-bottom: 24px;
+            gap: 16px;
+        margin-bottom: 24px;
+        grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
         }
 
-        .chart-card {
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(10px);
-            border-radius: 16px;
-            padding: 24px;
-            border: 1px solid rgba(255, 255, 255, 0.1);
+        .api-key-card {
+            background: rgba(0,0,0,0,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 12px;
+            padding: 20px;
+            transition: all 0.3s;
         }
 
-        .chart-card h3 {
-            margin-bottom: 16px;
-            font-size: 1.2rem;
+        .api-key-card:hover {
+            border-color: var(--primary);
+            transform: translateY(-4px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0,0.15);
+        }
+
+        .api-key-card.inactive {
+            opacity: 0.5;
+        border-color: var(--gray);
+        background: rgba(255,255,255,0.02);
+        }
+
+        .api-key-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 12px;
+        }
+
+        .api-key-name {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--white);
+            margin-bottom: 4px;
+        }
+
+        .api-key-badge {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            display: inline-flex;
+            gap: 4px;
+        }
+
+        .badge-active {
+            background: var(--success);
             color: var(--white);
         }
 
-        .chart-container {
-            position: relative;
-            height: 300px;
-        }
-
-        .logs-section {
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(10px);
-            border-radius: 16px;
-            padding: 24px;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            margin-bottom: 24px;
-        }
-
-        .logs-section h3 {
-            margin-bottom: 16px;
+        .badge-inactive {
+            background: var(--gray);
             color: var(--white);
         }
 
-        .logs-container {
-            max-height: 400px;
-            overflow-y: auto;
-            background: rgba(0, 0, 0, 0.3);
-            border-radius: 8px;
-            padding: 16px;
+        .badge-expiring {
+            background: var(--warning);
+            color: var(--white);
         }
 
-        .log-entry {
-            padding: 12px;
-            margin-bottom: 8px;
-            border-radius: 8px;
-            background: rgba(255, 255, 255, 0.05);
-            border-left: 4px solid var(--primary);
-            font-family: 'Courier New', monospace;
+        .api-key-actions {
+            display: flex;
+            gap: 8px;
+        align-items: center;
+        margin-top: 12px;
+        padding-top: 12px;
+            border-top: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .api-key-actions .btn {
+            padding: 8px 12px;
+            background: rgba(255,255,255,0.1);
+            color: var(--light);
             font-size: 0.85rem;
         }
 
-        .log-entry.success {
-            border-left-color: var(--success);
+        .api-key-stats {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+            margin-top: 12px;
+        font-size: 0.8rem;
+        color: rgba(255,255,255,0.7);
+        background: rgba(255,255,255,0.05);
+            border-radius: 8px;
+            padding: 12px;
+        }
+
+        .api-key-stats-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .api-key-id {
+            font-family: monospace;
+            background: rgba(99,102,241,0.2);
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            color: var(--white);
+            font-family: monospace;
+        }
+
+        .copy-btn {
+            background: rgba(255,255,255,0.1);
+            color: var(--light);
+            padding: 6px 12px;
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 8px;
+            font-size: 0.8rem;
+            cursor: pointer;
+        }
+
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0,0.8);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .modal-content {
+            background: var(--white);
+            border-radius: 16px;
+            padding: 32px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid var(--gray);
+        }
+
+        .modal-title {
+            font-size: 1.5rem;
+            color: var(--dark);
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            color: var(--danger);
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 8px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            display: block;
+            color: var(--dark);
+            font-size: 0.9rem;
+            font-weight: 500;
+            margin-bottom: 8px;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1px solid var(--gray);
+            border-radius: 8px;
+            font-size: 0.95rem;
+            color: var(--dark);
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 12px;
+            justify-content: flex-end;
+        }
+
+        .logs-section {
+            background: rgba(0,0,0,0,0.05);
+            border-radius: 12px;
+            padding: 24px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .log-entry {
+            background: rgba(255,255,255,0.02);
+            border-left: 4px solid var(--primary);
+            padding: 12px;
+            margin-bottom: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.85rem;
         }
 
         .log-entry.error {
@@ -232,14 +495,16 @@
         }
 
         .log-timestamp {
-            color: rgba(255, 255, 255, 0.5);
-            margin-right: 12px;
+            color: rgba(255,255,255,0.5);
+            font-size: 0.8rem;
+            margin-bottom: 4px;
         }
 
         .log-endpoint {
             color: var(--primary);
             font-weight: 600;
-            margin-right: 8px;
+            font-size: 0.9rem;
+            margin-bottom: 4px;
         }
 
         .log-status {
@@ -248,928 +513,674 @@
             border-radius: 4px;
             font-size: 0.75rem;
             font-weight: 600;
-        }
-
-        .log-status.success {
-            background: rgba(16, 185, 129, 0.2);
-            color: var(--success);
-        }
-
-        .log-status.error {
-            background: rgba(239, 68, 68, 0.2);
-            color: var(--danger);
-        }
-
-        .docs-section {
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(10px);
-            border-radius: 16px;
-            padding: 24px;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            margin-bottom: 24px;
-        }
-
-        .docs-section h2 {
-            margin-bottom: 24px;
-            color: var(--white);
-            font-size: 1.8rem;
-        }
-
-        .category-section {
-            margin-bottom: 32px;
-        }
-
-        .category-title {
-            color: var(--secondary);
-            font-size: 1.3rem;
-            margin-bottom: 16px;
-            font-weight: 600;
-        }
-
-        .endpoint-card {
-            background: rgba(0, 0, 0, 0.3);
-            border-radius: 12px;
-            padding: 20px;
-            margin-bottom: 16px;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            transition: all 0.3s;
-        }
-
-        .endpoint-card:hover {
-            border-color: var(--primary);
-            transform: translateX(4px);
-        }
-
-        .endpoint-header {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            margin-bottom: 12px;
-        }
-
-        .endpoint-method {
-            padding: 4px 12px;
-            border-radius: 6px;
-            font-size: 0.8rem;
-            font-weight: 600;
-            text-transform: uppercase;
-        }
-
-        .endpoint-method.GET {
-            background: rgba(16, 185, 129, 0.2);
-            color: var(--success);
-        }
-
-        .endpoint-method.POST {
-            background: rgba(245, 158, 11, 0.2);
-            color: var(--warning);
-        }
-
-        .endpoint-path {
-            font-family: 'Courier New', monospace;
-            font-size: 1.1rem;
-            color: var(--white);
-            flex: 1;
-        }
-
-        .endpoint-description {
-            color: rgba(255, 255, 255, 0.7);
-            margin-bottom: 12px;
-        }
-
-        .endpoint-params {
-            margin-top: 12px;
-        }
-
-        .endpoint-params-title {
-            color: var(--primary);
-            font-size: 0.9rem;
-            font-weight: 600;
-            margin-bottom: 8px;
-        }
-
-        .param-tag {
-            display: inline-block;
-            padding: 4px 12px;
-            background: rgba(99, 102, 241, 0.2);
-            border-radius: 6px;
-            color: var(--primary);
-            font-size: 0.85rem;
-            margin-right: 8px;
-            margin-bottom: 8px;
-        }
-
-        .param-tag.required {
-            background: rgba(239, 68, 68, 0.2);
-            color: var(--danger);
-        }
-
-        .test-section {
-            margin-top: 16px;
-            padding-top: 16px;
-            border-top: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        .test-input-group {
-            display: flex;
-            gap: 12px;
-            flex-wrap: wrap;
-            margin-bottom: 12px;
-        }
-
-        .test-input {
-            flex: 1;
-            min-width: 200px;
-            padding: 10px 16px;
-            background: rgba(255, 255, 255, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 8px;
-            color: var(--white);
-            font-size: 0.9rem;
-        }
-
-        .test-input::placeholder {
-            color: rgba(255, 255, 255, 0.5);
-        }
-
-        .test-input:focus {
-            outline: none;
-            border-color: var(--primary);
-        }
-
-        .test-btn {
-            padding: 10px 24px;
-            background: linear-gradient(135deg, var(--primary), var(--secondary));
-            border: none;
-            border-radius: 8px;
-            color: var(--white);
-            font-size: 0.9rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-
-        .test-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 15px rgba(99, 102, 241, 0.4);
-        }
-
-        .test-btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-            transform: none;
-        }
-
-        .test-response {
-            background: rgba(0, 0, 0, 0.4);
-            border-radius: 8px;
-            padding: 16px;
-            margin-top: 12px;
-            max-height: 400px;
-            overflow-y: auto;
-        }
-
-        .test-response pre {
-            font-family: 'Courier New', monospace;
-            font-size: 0.85rem;
-            color: var(--white);
-            white-space: pre-wrap;
-            word-wrap: break-word;
-        }
-
-        .loading {
-            display: inline-block;
-            width: 20px;
-            height: 20px;
-            border: 2px solid rgba(255, 255, 255, 0.3);
-            border-radius: 50%;
-            border-top-color: var(--primary);
-            animation: spin 0.8s linear infinite;
             margin-left: 8px;
         }
 
-        @keyframes spin {
-            to { transform: rotate(360deg); }
+        .log-status.success {
+            background: var(--success);
+            color: var(--white);
         }
 
-        .endpoint-performance {
-            margin-top: 16px;
-            padding-top: 16px;
-            border-top: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        .performance-metric {
-            display: flex;
-            justify-content: space-between;
-            padding: 8px 0;
-            color: rgba(255, 255, 255, 0.8);
-        }
-
-        .performance-metric-label {
-            color: rgba(255, 255, 255, 0.5);
-        }
-
-        .performance-metric-value {
-            font-weight: 600;
-        }
-
-        .scrollbar-custom::-webkit-scrollbar {
-            width: 8px;
-        }
-
-        .scrollbar-custom::-webkit-scrollbar-track {
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 4px;
-        }
-
-        .scrollbar-custom::-webkit-scrollbar-thumb {
-            background: var(--primary);
-            border-radius: 4px;
-        }
-
-        .scrollbar-custom::-webkit-scrollbar-thumb:hover {
-            background: var(--primary-dark);
+        .log-status.error {
+            background: var(--danger);
+            color: var(--white);
         }
 
         @media (max-width: 768px) {
-            .stats-grid {
-                grid-template-columns: 1fr;
-            }
-
-            .charts-grid {
-                grid-template-columns: 1fr;
-            }
-
-            h1 {
-                font-size: 1.8rem;
-            }
-
-            .test-input-group {
+            .api-keys-header {
                 flex-direction: column;
             }
+
+            .api-keys-list {
+                grid-template-columns: 1fr;
+            }
+
+            .api-key-stats {
+                grid-template-columns: 1fr;
+            }
+        }
         }
     </style>
 </head>
 <body>
     <div class="container">
         <header>
-            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
-                <div>
-                    <h1>🚀 MutanoX-API Dashboard v14</h1>
-                    <p class="subtitle">Monitoramento em Tempo Real & Documentação Interativa</p>
-                </div>
-                <div style="display: flex; gap: 16px; align-items: center; flex-wrap: wrap;">
-                    <div class="connection-status">
-                        <div class="connection-indicator" id="connectionIndicator"></div>
-                        <span id="connectionText">Conectando...</span>
-                    </div>
-                    <div class="connection-status">
-                        <span>👥</span>
-                        <span id="activeConnections">0</span> conexões ativas
-                    </div>
-                    <div class="connection-status" id="userInfo" style="display: none;">
-                        <span>👤</span>
-                        <span id="username"></span>
-                    </div>
-                    <button class="connection-status" id="logoutButton" onclick="logout()" style="background: rgba(239, 68, 68, 0.2); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 20px; padding: 8px 16px; color: #fca5a5; cursor: pointer; transition: all 0.3s;">
-                        <span>🚪 Logout</span>
-                    </button>
+            <div class="header-content">
+                <div class="logo">🚀 MutanoX-API Dashboard v14</div>
+                <div class="connection-info">
+                    <span class="connection-badge" id="connectionBadge">🔴 Offline</span>
+                    <span>|</span>
+                    <span id="activeKeysCount">0</span> API Keys Ativas
                 </div>
             </div>
         </header>
 
-        <script>
-            // Mostrar informações do usuário no header
-            const user = JSON.parse(localStorage.getItem('user') || '{}');
-            if (user.username) {
-                const userInfo = document.getElementById('userInfo');
-                const usernameSpan = document.getElementById('username');
-                userInfo.style.display = 'inline-flex';
-                usernameSpan.textContent = user.username;
-            }
-        </script>
-
         <div class="tabs">
             <button class="tab-btn active" onclick="showTab('dashboard')">📊 Dashboard</button>
-            <button class="tab-btn" onclick="showTab('docs')">📚 Documentação</button>
-            <button class="tab-btn" onclick="showTab('endpoints')">🔗 Endpoints</button>
+            <button class="tab-btn" onclick="showTab('apikeys')">🔑 API Keys</button>
             <button class="tab-btn" onclick="showTab('logs')">📝 Logs</button>
+            <button class="tab-btn" onclick="showTab('endpoints')">📚 Documentação</button>
         </div>
 
         <!-- Dashboard Tab -->
         <div id="dashboard" class="tab-content active">
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <div class="stat-label">Total de Requisições</div>
-                    <div class="stat-value" id="totalRequests">0</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-label">Requisições Bem-sucedidas</div>
-                    <div class="stat-value" id="successfulRequests" style="color: var(--success)">0</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-label">Requisições com Erro</div>
-                    <div class="stat-value" id="failedRequests" style="color: var(--danger)">0</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-label">Taxa de Sucesso</div>
-                    <div class="stat-value" id="successRate">0%</div>
-                </div>
-            </div>
+            <div class="content-wrapper">
+                <h2 class="section-title">📊 Visão Geral</h2>
 
-            <div class="charts-grid">
-                <div class="chart-card">
-                    <h3>📈 Requisições por Hora</h3>
-                    <div class="chart-container">
-                        <canvas id="hourlyChart"></canvas>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon">📊</div>
+                        <div class="stat-label">Total de Requisições</div>
+                        <div class="stat-value" id="totalRequests">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">✅</div>
+                        <div class="stat-label">Requisições Bem-sucedidas</div>
+                        <div class="stat-value" id="successfulRequests" style="color: var(--success)">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">❌</div>
+                        <div class="stat-label">Requisições com Erro</div>
+                        <div class="stat-value" id="failedRequests" style="color: var(--danger)">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">⚡</div>
+                        <div class="stat-label">Taxa de Sucesso</div>
+                        <div class="stat-value" id="successRate">0%</div>
                     </div>
                 </div>
-                <div class="chart-card">
-                    <h3>⏱️ Tempo de Resposta</h3>
-                    <div class="chart-container">
-                        <canvas id="responseTimeChart"></canvas>
+
+                <h2 class="section-title">🔍 Estatísticas de API Keys</h2>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon">🔑</div>
+                        <div class="stat-label">Total de API Keys</div>
+                        <div class="stat-value" id="totalApiKeys">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">✓</div>
+                        <div class="stat-label">API Keys Ativas</div>
+                        <div class="stat-value" id="activeApiKeys" style="color: var(--success)">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">💤</div>
+                        <div class="stat-label">API Keys Inativas</div>
+                        <div class="stat-value" id="inactiveApiKeys" style="color: var(--gray)">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">📊</div>
+                        <div class="stat-label">Total de Uso</div>
+                        <div class="stat-value" id="totalUsage">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">📈</div>
+                        <div class="stat-label">Uso Médio por Key</div>
+                        <div class="stat-value" id="averageUsage">0</div>
                     </div>
                 </div>
-                <div class="chart-card">
-                    <h3>🎯 Uso por Endpoint</h3>
-                    <div class="chart-container">
-                        <canvas id="endpointChart"></canvas>
-                    </div>
-                </div>
-                <div class="chart-card">
-                    <h3>✅ Status das Requisições</h3>
-                    <div class="chart-container">
-                        <canvas id="statusChart"></canvas>
-                    </div>
-                </div>
-            </div>
 
-            <div class="logs-section">
-                <h3>📋 Requisições Recentes</h3>
-                <div class="logs-container scrollbar-custom" id="recentRequests">
-                    <p style="color: rgba(255, 255, 255, 0.5); text-align: center;">Nenhuma requisição recente</p>
+                <h2 class="section-title">📊 Uso por Endpoint</h2>
+
+                <div id="endpointUsage" style="max-height: 500px; overflow-y: auto;">
+                    <p style="text-align: center; color: rgba(255,255,255,0.5);">Carregando...</p>
                 </div>
-            </div>
-        </div>
-
-        <!-- Documentation Tab -->
-        <div id="docs" class="tab-content">
-            <div class="docs-section">
-                <h2>📚 Documentação da API v14</h2>
-                <p style="color: rgba(255, 255, 255, 0.7); margin-bottom: 24px;">
-                    Documentação completa da MutanoX-API v14. Cada endpoint pode ser testado diretamente aqui no dashboard.
-                </p>
-
-                <div id="docsContent"></div>
             </div>
         </div>
 
-        <!-- Endpoints Tab -->
-        <div id="endpoints" class="tab-content">
-            <div class="docs-section">
-                <h2>🔗 Gerenciamento de Endpoints</h2>
-                <div id="endpointsContent"></div>
+        <!-- API Keys Tab -->
+        <div id="apikeys" class="tab-content">
+            <div class="content-wrapper">
+                <h2 class="section-title">🔑 Gerenciamento de API Keys</h2>
+
+                <div class="api-keys-header">
+                    <input 
+                        type="text" 
+                        class="search-box" 
+                        id="apiKeySearch" 
+                        placeholder="Buscar API Keys..." 
+                        oninput="searchApiKeys()"
+                    >
+                    <button class="btn" onclick="showCreateModal()">+ Criar Nova API Key</button>
+                </div>
+
+                <div class="api-keys-list" id="apiKeysList">
+                    <p style="text-align: center; color: rgba(255,255,255,0.5);">Carregando API Keys...</p>
+                </div>
             </div>
         </div>
 
         <!-- Logs Tab -->
         <div id="logs" class="tab-content">
-            <div class="logs-section">
-                <h3>📝 Logs em Tempo Real</h3>
-                <div style="display: flex; gap: 12px; margin-bottom: 16px;">
-                    <button class="test-btn" onclick="clearLogs()">🗑️ Limpar Logs</button>
-                    <button class="test-btn" onclick="exportLogs()">💾 Exportar Logs</button>
+            <div class="content-wrapper">
+                <div class="logs-section" id="logsContainer">
+                    <p style="text-align: center; color: rgba(255,255,255,0.5);">Carregando logs...</p>
                 </div>
-                <div class="logs-container scrollbar-custom" id="fullLogs">
-                    <p style="color: rgba(255, 255, 255, 0.5); text-align: center;">Aguardando logs...</p>
-                </div>
+            </div>
+        </div>
+
+        <!-- Endpoints Tab -->
+        <div id="endpoints" class="tab-content">
+            <div class="content-wrapper">
+                <p style="text-align: center; color: rgba(255,255,255,0.5);">Carregando documentação...</p>
             </div>
         </div>
     </div>
 
-    <script>
-        /**
-         * MEGA PROMPT: Adicionar autenticação ao dashboard WebSocket
-
-         REQUISITOS:
-         - Verificar token JWT antes de conectar ao WebSocket
-         - Redirecionar para login se não autenticado
-         - Enviar token na conexão WebSocket
-         - Implementar logout funcional
-         - Atualizar UI baseado no status de autenticação
-         - Proteger todas as ações com autenticação
-
-         IMPLEMENTAÇÃO:
-         - Função checkAuth() para verificar token
-         - Função logout() para limpar sessão
-         - Modificar conexão WebSocket para enviar token
-         - Verificar token em cada requisição de teste
-         - UI de usuário logado no header
-         */
-
-        // Verificar autenticação ao carregar
-        function checkAuth() {
-            const token = localStorage.getItem('token');
-            const user = localStorage.getItem('user');
-
-            if (!token || !user) {
-                // Não autenticado, redirecionar para login
-                window.location.href = 'login.html';
-                return false;
-            }
-
-            return {
-                token,
-                user: JSON.parse(user)
-            };
-        }
-
-        // Fazer logout
-        function logout() {
-            if (confirm('Tem certeza que deseja sair?')) {
-                localStorage.removeItem('token');
-                localStorage.removeItem('user');
-                localStorage.removeItem('loginAt');
-                
-                // Desconectar WebSocket
-                if (typeof socket !== 'undefined') {
-                    socket.disconnect();
-                }
-                
-                // Redirecionar para login
-                window.location.href = 'login.html';
-            }
-        }
-
-        // Verificar autenticação
-        const auth = checkAuth();
-        if (!auth) {
-            // Já redirecionado pelo checkAuth
-        }
-
-        // WebSocket Connection
-        const socket = io('http://localhost:3003', {
-            auth: {
-                token: auth.token
-            }
-        });
-        let isConnected = false;
-
-        // Charts
-        let hourlyChart, responseTimeChart, endpointChart, statusChart;
-
-        // Metrics data
-        let currentMetrics = {
-            totalRequests: 0,
-            successfulRequests: 0,
-            failedRequests: 0,
-            recentRequests: [],
-            hourlyRequests: {},
-            endpoints: {}
-        };
-
-        // Initialize Socket connection
-        socket.on('connect', () => {
-            isConnected = true;
-            document.getElementById('connectionIndicator').classList.add('connected');
-            document.getElementById('connectionText').textContent = 'Conectado';
-            console.log('🔌 Conectado ao servidor WebSocket');
-        });
-
-        socket.on('disconnect', () => {
-            isConnected = false;
-            document.getElementById('connectionIndicator').classList.remove('connected');
-            document.getElementById('connectionText').textContent = 'Desconectado';
-            console.log('❌ Desconectado do servidor WebSocket');
-        });
-
-        // Receive initial metrics
-        socket.on('metrics:initial', (metrics) => {
-            currentMetrics = metrics;
-            updateDashboard();
-            loadDocumentation();
-        });
-
-        // Receive metrics updates
-        socket.on('metrics:update', (data) => {
-            currentMetrics.totalRequests = data.metrics.totalRequests;
-            currentMetrics.successfulRequests = data.metrics.successfulRequests;
-            currentMetrics.failedRequests = data.metrics.failedRequests;
-            currentMetrics.activeConnections = data.metrics.activeConnections;
-
-            if (data.endpointMetrics) {
-                currentMetrics.endpoints[data.endpoint] = data.endpointMetrics;
-            }
-
-            updateDashboard();
-        });
-
-        // Receive dashboard updates
-        socket.on('dashboard:update', (data) => {
-            currentMetrics.totalRequests = data.totalRequests;
-            currentMetrics.successRate = data.successRate;
-            currentMetrics.activeConnections = data.activeConnections;
-            currentMetrics.hourlyRequests = data.hourlyData;
-            currentMetrics.endpoints = data.endpointMetrics;
-
-            updateDashboard();
-        });
-
-        // Update connection count
-        socket.on('connection:update', (data) => {
-            document.getElementById('activeConnections').textContent = data.activeConnections;
-        });
-
-        // Tab navigation
-        function showTab(tabId) {
-            document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
-            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-
-            document.getElementById(tabId).classList.add('active');
-            event.target.classList.add('active');
-        }
-
-        // Update dashboard
-        function updateDashboard() {
-            // Update stats
-            document.getElementById('totalRequests').textContent = currentMetrics.totalRequests;
-            document.getElementById('successfulRequests').textContent = currentMetrics.successfulRequests;
-            document.getElementById('failedRequests').textContent = currentMetrics.failedRequests;
-            document.getElementById('successRate').textContent = currentMetrics.successRate + '%';
-            document.getElementById('activeConnections').textContent = currentMetrics.activeConnections || 0;
-
-            // Update recent requests
-            updateRecentRequests();
-
-            // Update charts
-            updateCharts();
-        }
-
-        // Update recent requests
-        function updateRecentRequests() {
-            const container = document.getElementById('recentRequests');
-            const logsContainer = document.getElementById('fullLogs');
-
-            if (!currentMetrics.recentRequests || currentMetrics.recentRequests.length === 0) {
-                container.innerHTML = '<p style="color: rgba(255, 255, 255, 0.5); text-align: center;">Nenhuma requisição recente</p>';
-                return;
-            }
-
-            const requestsHtml = currentMetrics.recentRequests.map(req => `
-                <div class="log-entry ${req.statusCode >= 200 && req.statusCode < 400 ? 'success' : 'error'}">
-                    <span class="log-timestamp">${new Date(req.timestamp).toLocaleTimeString()}</span>
-                    <span class="log-endpoint">${req.method} ${req.endpoint}</span>
-                    <span class="log-status ${req.statusCode >= 200 && req.statusCode < 400 ? 'success' : 'error'}">${req.statusCode}</span>
-                    <span style="color: rgba(255, 255, 255, 0.5); margin-left: auto;">${req.responseTime}ms</span>
+        <!-- Modal for Creating API Key -->
+        <div class="modal-overlay" id="createKeyModal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3 class="modal-title">Nova API Key</h3>
+                    <button class="modal-close" onclick="closeModal()">&times;</button>
                 </div>
-            `).join('');
 
-            container.innerHTML = requestsHtml;
-            logsContainer.innerHTML = requestsHtml;
-        }
+                <div class="form-group">
+                    <label class="form-label"">Nome da API Key</label>
+                    <input type="text" class="form-input" id="apiKeyName" placeholder="Ex: Minha API Principal">
+                </div>
 
-        // Initialize charts
-        function initCharts() {
-            const chartOptions = {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        labels: {
-                            color: 'rgba(255, 255, 255, 0.8)'
-                        }
-                    }
-                },
-                scales: {
-                    x: {
-                        ticks: {
-                            color: 'rgba(255, 255, 255, 0.6)'
-                        },
-                        grid: {
-                            color: 'rgba(255, 255, 255, 0.1)'
-                        }
-                    },
-                    y: {
-                        ticks: {
-                            color: 'rgba(255, 255, 255, 0.6)'
-                        },
-                        grid: {
-                            color: 'rgba(255, 255, 255, 0.1)'
-                        }
-                    }
+                <div class="form-group">
+                    <label class="form-label">Descrição</label>
+                    <textarea class="form-input" id="apiKeyDescription" rows="3" placeholder="Descrição opcional..."></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Rate Limit (req/min)</label>
+                    <input type="number" class="form-input" id="apiKeyRateLimit" value="100" min="1" max="10000">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Expira em (dias)</label>
+                    <input type="number" class="form-input" id="apiKeyExpiresInDays" placeholder="0 = nunca expira">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Permissões</label>
+                    <div style="margin-top: 8px;">
+                        <label><input type="checkbox" value="read" checked> Read</label><br>
+                        <label><input type="checkbox" value="write" checked> Write</label><br>
+                        <label><input type="checkbox" value="admin"> Admin</label><br>
+                        <label><input type="checkbox" value="all" checked> All</label>
+                    </div>
+                </div>
+
+                <div class="modal-actions">
+                    <button class="btn btn-secondary" onclick="closeModal()">Cancelar</button>
+                    <button class="btn" onclick="createKey()">Criar API Key</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal for Viewing API Key -->
+        <div class="modal-overlay" id="viewKeyModal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3 class="modal-title" id="viewKeyTitle">Detalhes da API Key</h3>
+                    <button class="modal-close" onclick="closeViewModal()">&times;</button>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Nome</label>
+                    <input type="text" class="form-input" id="viewKeyName" readonly>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">API Key</label>
+                    <div class="api-key-id" id="viewApiKeyId" style="background: rgba(0,0,0,0,0.05); padding: 8px 16px; border-radius: 6px; font-size: 0.8rem;">mk_xxxxxxxxxxxxxxxxxxxxxxxxx</div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">API Key Completa</label>
+                    <input type="text" class="form-input" id="viewApiKeyFull" readonly style="font-family: monospace;">
+                </div>
+
+                <div class="api-key-stats">
+                    <div class="api-key-stats-item">
+                        <span>📊 Uso:</span>
+                        <span id="viewKeyUsage" class="api-key-id">0</span>
+                    </div>
+                    <div class="api-key-stats-item">
+                        <span>⚡ Limite:</span>
+                        <span id="viewKeyRateLimit" class="api-key-id">100</span> /min
+                    </div>
+                    <div class="api-key-stats-item">
+                        <span>🕒 Criada:</span>
+                        <span id="viewKeyCreatedAt">-</span>
+                    </div>
+                    <div class="api-key-stats-item">
+                        <span>📅 Status:</span>
+                        <span id="viewKeyStatus" class="badge-active">Ativa</span>
+                    </div>
+                </div>
+
+                <div class="api-key-actions">
+                    <button class="btn btn-secondary" onclick="closeViewModal()">Fechar</button>
+                    <button class="btn btn-danger" onclick="deleteApiKey()">Deletar</button>
+                    <button class="btn" onclick="copyApiKey()" class="copy-btn">📋</button>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            /**
+             * MEGA PROMPT: Criar dashboard moderno com gerenciamento de API Keys
+
+             REQUISITOS:
+             - Interface moderna e responsiva
+             - Gerenciamento completo de API Keys
+             - Visualização de estatísticas em tempo real
+             - Modal para criar API Keys
+             - Modal para ver detalhes
+             - Busca e filtros
+             - Ações (copiar, deletar, atualizar)
+             - Dashboard com gráficos de uso
+
+             IMPLEMENTAÇÃO:
+             - Socket connection com autenticação
+             - Abas de navegação (Dashboard, API Keys, Logs, Endpoints)
+             - Cards de estatísticas principais
+             - Lista de API Keys com ações
+             - Modal para criar/editar API Keys
+             - Gráfico de uso por endpoint
+             - Filtros de busca
+             */
+
+            let socket;
+            let currentTab = 'dashboard';
+            let apiKeys = [];
+            let selectedKeyId = null;
+
+            // Verificar se já está autenticado
+            function checkAuth() {
+                const token = localStorage.getItem('apiKey');
+                if (!token) {
+                    window.location.href = 'login.html';
+                    return false;
                 }
-            };
+                return token;
+            }
 
-            // Hourly requests chart
-            hourlyChart = new Chart(document.getElementById('hourlyChart'), {
-                type: 'line',
-                data: {
-                    labels: Array.from({length: 24}, (_, i) => `${i}:00`),
-                    datasets: [{
-                        label: 'Requisições',
-                        data: Array(24).fill(0),
-                        borderColor: '#6366f1',
-                        backgroundColor: 'rgba(99, 102, 241, 0.2)',
-                        fill: true,
-                        tension: 0.4
-                    }]
-                },
-                options: chartOptions
-            });
+            // Mostrar aba
+            function showTab(tab) {
+                document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+                document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+                
+                document.getElementById(tab).classList.add('active');
+                document.getElementById(tab).classList.add('active');
+                currentTab = tab;
 
-            // Response time chart
-            responseTimeChart = new Chart(document.getElementById('responseTimeChart'), {
-                type: 'line',
-                data: {
-                    labels: [],
-                    datasets: [{
-                        label: 'Tempo (ms)',
-                        data: [],
-                        borderColor: '#10b981',
-                        backgroundColor: 'rgba(16, 185, 129, 0.2)',
-                        fill: true,
-                        tension: 0.4
-                    }]
-                },
-                options: chartOptions
-            });
+                // Carregar dados da aba
+                if (tab === 'apikeys') {
+                    loadApiKeys();
+                } else if (tab === 'dashboard') {
+                    loadDashboardStats();
+                }
+            }
 
-            // Endpoint usage chart
-            endpointChart = new Chart(document.getElementById('endpointChart'), {
-                type: 'bar',
-                data: {
-                    labels: [],
-                    datasets: [{
-                        label: 'Requisições',
-                        data: [],
-                        backgroundColor: [
-                            'rgba(99, 102, 241, 0.6)',
-                            'rgba(139, 92, 246, 0.6)',
-                            'rgba(16, 185, 129, 0.6)',
-                            'rgba(245, 158, 11, 0.6)',
-                            'rgba(239, 68, 68, 0.6)'
-                        ]
-                    }]
-                },
-                options: chartOptions
-            });
-
-            // Status chart
-            statusChart = new Chart(document.getElementById('statusChart'), {
-                type: 'doughnut',
-                data: {
-                    labels: ['Sucesso', 'Erro'],
-                    datasets: [{
-                        data: [0, 0],
-                        backgroundColor: ['#10b981', '#ef4444']
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            labels: {
-                                color: 'rgba(255, 255, 255, 0.8)'
-                            }
-                        }
-                    }
+            // WebSocket Connection
+            socket = io('http://localhost:3003', {
+                auth: {
+                    apiKey: checkAuth()
                 }
             });
-        }
 
-        // Update charts
-        function updateCharts() {
-            // Update hourly chart
-            if (currentMetrics.hourlyRequests) {
-                const hourlyData = Array.from({length: 24}, (_, i) => currentMetrics.hourlyRequests[i] || 0);
-                hourlyChart.data.datasets[0].data = hourlyData;
-                hourlyChart.update('none');
+            socket.on('connect', () => {
+                updateConnectionStatus(true);
+                loadAllData();
+            });
+
+            socket.on('disconnect', () => {
+                updateConnectionStatus(false);
+            });
+
+            socket.on('dashboard:update', (data) => {
+                if (currentTab === 'dashboard') {
+                    updateDashboardStats(data);
+                }
+            });
+
+            // API Keys WebSocket events
+            socket.on('apiKeys:update', (data) => {
+                if (currentTab === 'apikeys') {
+                    updateApiKeysList(data);
+                }
+            });
+
+            // Logs WebSocket events
+            socket.on('logs:update', (data) => {
+                if (currentTab === 'logs') {
+                    updateLogs(data);
+                }
+            });
+
+            // Update connection status
+            function updateConnectionStatus(connected) {
+                const badge = document.getElementById('connectionBadge');
+                const count = document.getElementById('activeKeysCount');
+                
+                if (connected) {
+                    badge.textContent = '🟢 Online';
+                    badge.className = 'connection-badge online';
+                } else {
+                    badge.textContent = '🔴 Offline';
+                    badge.className = 'connection-badge offline';
+                }
+
+                if (socket.connected) {
+                    count.textContent = socket.connected;
+                }
             }
 
-            // Update response time chart
-            if (currentMetrics.responseTimeHistory && currentMetrics.responseTimeHistory.length > 0) {
-                const last20 = currentMetrics.responseTimeHistory.slice(-20);
-                responseTimeChart.data.labels = last20.map(r => new Date(r.timestamp).toLocaleTimeString());
-                responseTimeChart.data.datasets[0].data = last20.map(r => r.responseTime);
-                responseTimeChart.update('none');
+            // Dashboard stats
+            function loadDashboardStats() {
+                fetch('/api/keys/stats')
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.success) {
+                            document.getElementById('totalApiKeys').textContent = data.data.total;
+                            document.getElementById('activeApiKeys').textContent = data.data.active;
+                            document.getElementById('inactiveApiKeys').textContent = data.data.inactive;
+                            document.getElementById('totalUsage').textContent = data.data.totalUsage;
+                            document.getElementById('averageUsage').textContent = data.data.averageUsage;
+                        } else {
+                            console.error('Erro ao carregar estatísticas:', data.message);
+                        }
+                    });
             }
 
-            // Update endpoint chart
-            const endpointLabels = Object.keys(currentMetrics.endpoints || {});
-            const endpointData = endpointLabels.map(ep => currentMetrics.endpoints[ep]?.totalRequests || 0);
-            endpointChart.data.labels = endpointLabels;
-            endpointChart.data.datasets[0].data = endpointData;
-            endpointChart.update('none');
+            function updateDashboardStats(data) {
+                document.getElementById('totalRequests').textContent = data.totalRequests || 0;
+                document.getElementById('successfulRequests').textContent = data.successfulRequests || 0;
+                document.getElementById('failedRequests').textContent = data.failedRequests || 0;
+                
+                const successRate = data.totalRequests > 0
+                    ? ((data.successfulRequests / data.totalRequests) * 100).toFixed(2)
+                    : '0';
+                document.getElementById('successRate').textContent = successRate + '%';
 
-            // Update status chart
-            statusChart.data.datasets[0].data = [
-                currentMetrics.successfulRequests,
-                currentMetrics.failedRequests
-            ];
-            statusChart.update('none');
-        }
-
-        // Load documentation
-        async function loadDocumentation() {
-            try {
-                const response = await fetch('http://localhost:3003/api/endpoints');
-                const endpoints = await response.json();
-                renderDocumentation(endpoints);
-                renderEndpointsManagement(endpoints);
-            } catch (error) {
-                console.error('Error loading documentation:', error);
+                // Endpoint usage
+                updateEndpointUsage(data.endpointUsage);
             }
-        }
 
-        // Render documentation
-        function renderDocumentation(endpoints) {
-            const container = document.getElementById('docsContent');
-            let html = '';
+            function updateEndpointUsage(endpointUsage) {
+                const container = document.getElementById('endpointUsage');
+                if (!endpointUsage || Object.keys(endpointUsage).length === 0) {
+                    container.innerHTML = '<p style="text-align: center; color: rgba(255,255,255,0.5);">Sem dados ainda</p>';
+                    return;
+                }
 
-            Object.entries(endpoints).forEach(([category, categoryEndpoints]) => {
-                html += `
-                    <div class="category-section">
-                        <div class="category-title">${category.toUpperCase()}</div>
-                `;
+                let html = '<table style="width: 100%; border-collapse: collapse;">';
+                html += '<thead><tr><th>Endpoint</th><th>Requisições</th><th>Último Uso</th></tr></thead>';
+                html += '<tbody>';
 
-                categoryEndpoints.forEach(endpoint => {
+                for (const [endpoint, stats] of Object.entries(endpointUsage)) {
+                    const lastUsed = stats.lastUsedAt 
+                        ? new Date(stats.lastUsedAt).toLocaleDateString('pt-BR') 
+                        : 'Nunca';
+                    
+                    html += `<tr>
+                        <td><code>${endpoint}</code></td>
+                        <td>${stats.requestCount || 0}</td>
+                        <td>${lastUsed}</td>
+                    </tr>`;
+                }
+
+                html += '</tbody></table>';
+                container.innerHTML = html;
+            }
+
+            // API Keys functions
+            function loadApiKeys() {
+                fetch('/api/keys')
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.success) {
+                            apiKeys = data.data;
+                            renderApiKeysList();
+                        } else {
+                            console.error('Erro ao carregar API Keys:', data.message);
+                        }
+                    });
+            }
+
+            function renderApiKeysList() {
+                const container = document.getElementById('apiKeysList');
+                
+                if (apiKeys.length === 0) {
+                    container.innerHTML = '<p style="text-align: center; color: rgba(255,255,255,0.5);">Nenhuma API Key criada ainda.</p>';
+                    return;
+                }
+
+                let html = '';
+                apiKeys.forEach(key => {
+                    const statusClass = key.isActive ? 'badge-active' : 'badge-inactive';
+                    const statusText = key.isActive ? 'Ativa' : 'Inativa';
+                    
                     html += `
-                        <div class="endpoint-card">
-                            <div class="endpoint-header">
-                                <span class="endpoint-method ${endpoint.method.includes('GET') ? 'GET' : 'POST'}">${endpoint.method}</span>
-                                <span class="endpoint-path">${endpoint.path}</span>
+                        <div class="api-key-card ${!key.isActive ? 'inactive' : ''}">
+                            <div class="api-key-header">
+                                <div>
+                                    <div class="api-key-name">${key.name}</div>
+                                    <div>
+                                        <span class="api-key-badge ${statusClass}">${statusText}</span>
+                                        <span class="api-key-badge badge-expiring">Expirando em ${Math.ceil((new Date(key.expiresAt) - Date.now()) / (1000 * 60 * 60 * 24))} dias</span>
+                                    </div>
+                                </div>
+                                <div class="api-key-actions">
+                                    <button class="api-key-actions btn" onclick="viewApiKey('${key.id}')">🔍 Detalhes</button>
+                                    <button class="api-key-actions btn" onclick="editApiKey('${key.id}')">✏️ Editar</button>
+                                    <button class="api-key-actions btn btn-danger" onclick="deleteApiKey('${key.id}')">🗑️ Deletar</button>
+                                    <button class="api-key-actions btn btn-secondary" onclick="copyApiKey('${key.key}')">📋 Copiar</button>
+                                </div>
                             </div>
-                            <div class="endpoint-description">${endpoint.description}</div>
-                            <div class="endpoint-params">
-                                <div class="endpoint-params-title">Parâmetros:</div>
-                                ${endpoint.params.map(param => `
-                                    <span class="param-tag ${['url', 'type', 'id', 'question', 'prompt', 'query', 'username', 'q', 'cpf'].includes(param) ? 'required' : ''}">${param}</span>
-                                `).join('')}
+
+                            <div class="api-key-stats">
+                                <div class="api-key-stats-item">
+                                    <span>📊 Uso:</span>
+                                    <span class="api-key-id">${key.usageCount || 0}</span>
+                                </div>
+                                <div class="api-key-stats-item">
+                                    <span>⚡ Limite:</span>
+                                    <span class="api-key-id">${key.rateLimit}</span> /min
+                                </div>
+                                <div class="api-key-stats-item">
+                                    <span>🕒 Criada em:</span>
+                                    <span>${new Date(key.createdAt).toLocaleDateString('pt-BR')}</span>
+                                </div>
+                                <div class="api-key-stats-item">
+                                    <span>📅 Status:</span>
+                                    <span class="badge ${statusClass}">${statusText}</span>
+                                </div>
                             </div>
                         </div>
                     `;
                 });
 
-                html += '</div>';
-            });
+                container.innerHTML = html;
+            }
 
-            container.innerHTML = html;
-        }
+            // Modal functions
+            function showCreateModal() {
+                document.getElementById('createKeyModal').style.display = 'flex';
+                document.getElementById('apiKeyName').focus();
+            }
 
-        // Render endpoints management
-        function renderEndpointsManagement(endpoints) {
-            const container = document.getElementById('endpointsContent');
-            let html = '';
+            function closeModal() {
+                document.getElementById('createKeyModal').style.display = 'none';
+                document.getElementById('viewKeyModal').style.display = 'none';
+            }
 
-            Object.entries(endpoints).forEach(([category, categoryEndpoints]) => {
-                html += `
-                    <div class="category-section">
-                        <div class="category-title">${category.toUpperCase()}</div>
-                `;
+            function showViewModal(keyId) {
+                const key = apiKeys.find(k => k.id === keyId);
+                if (!key) return;
 
-                categoryEndpoints.forEach(endpoint => {
-                    const endpointMetrics = currentMetrics.endpoints[endpoint.path];
-                    html += `
-                        <div class="endpoint-card">
-                            <div class="endpoint-header">
-                                <span class="endpoint-method ${endpoint.method.includes('GET') ? 'GET' : 'POST'}">${endpoint.method}</span>
-                                <span class="endpoint-path">${endpoint.path}</span>
-                            </div>
-                            <div class="endpoint-description">${endpoint.description}</div>
+                document.getElementById('viewKeyId').textContent = key.id;
+                document.getElementById('viewKeyName').value = key.name;
+                document.getElementById('viewApiKeyFull').value = key.key;
+                document.getElementById('viewKeyUsage').textContent = key.usageCount || 0;
+                document.getElementById('viewKeyRateLimit').textContent = key.rateLimit;
+                document.getElementById('viewKeyCreatedAt').textContent = new Date(key.createdAt).toLocaleDateString('pt-BR');
+                document.getElementById('viewKeyStatus').textContent = key.isActive ? 'Ativa' : 'Inativa';
+                
+                selectedKeyId = key.id;
+                document.getElementById('viewKeyModal').style.display = 'flex';
+            }
 
-                            <div class="endpoint-performance">
-                                <div class="performance-metric">
-                                    <span class="performance-metric-label">Total de Requisições:</span>
-                                    <span class="performance-metric-value">${endpointMetrics?.totalRequests || 0}</span>
-                                </div>
-                                <div class="performance-metric">
-                                    <span class="performance-metric-label">Bem-sucedidas:</span>
-                                    <span class="performance-metric-value" style="color: var(--success)">${endpointMetrics?.successfulRequests || 0}</span>
-                                </div>
-                                <div class="performance-metric">
-                                    <span class="performance-metric-label">Com Erro:</span>
-                                    <span class="performance-metric-value" style="color: var(--danger)">${endpointMetrics?.failedRequests || 0}</span>
-                                </div>
-                                <div class="performance-metric">
-                                    <span class="performance-metric-label">Tempo Médio:</span>
-                                    <span class="performance-metric-value">${endpointMetrics?.averageResponseTime?.toFixed(2) || 0}ms</span>
-                                </div>
-                                <div class="performance-metric">
-                                    <span class="performance-metric-label">Última Requisição:</span>
-                                    <span class="performance-metric-value">${endpointMetrics?.lastRequest ? new Date(endpointMetrics.lastRequest).toLocaleTimeString() : 'N/A'}</span>
-                                </div>
-                            </div>
+            function closeViewModal() {
+                closeModal();
+                selectedKeyId = null;
+            }
 
-                            <div class="test-section">
-                                <div class="endpoint-params-title">Testar Endpoint:</div>
-                                <div class="test-input-group">
-                                    ${endpoint.params.map(param => `
-                                        <input type="text" class="test-input" id="${endpoint.path.replace(/[^a-zA-Z0-9]/g, '_')}_${param}" placeholder="${param}">
-                                    `).join('')}
-                                </div>
-                                <button class="test-btn" onclick="testEndpoint('${endpoint.path}', '${endpoint.method.includes('POST') ? 'POST' : 'GET'}', ${JSON.stringify(endpoint.params)})">
-                                    🚀 Testar Endpoint
-                                </button>
-                                <div class="test-response" id="response_${endpoint.path.replace(/[^a-zA-Z0-9]/g, '_')}">
-                                    <pre style="color: rgba(255, 255, 255, 0.5);">Clique em "Testar Endpoint" para ver a resposta</pre>
-                                </div>
-                            </div>
-                        </div>
-                    `;
-                });
+            function createKey() {
+                const name = document.getElementById('apiKeyName').value.trim();
+                const description = document.getElementById('apiKeyDescription').value.trim();
+                const rateLimit = parseInt(document.getElementById('apiKeyRateLimit').value);
+                const expiresInDays = parseInt(document.getElementById('apiKeyExpiresInDays').value);
+                const permissions = [];
 
-                html += '</div>';
-            });
+                if (document.getElementById('permRead').checked) permissions.push('read');
+                if (document.getElementById('permWrite').checked) permissions.push('write');
+                if (document.getElementById('permAdmin').checked) permissions.push('admin');
+                if (document.getElementById('permAll').checked) permissions.push('all');
 
-            container.innerHTML = html;
-        }
+                const data = {
+                    name,
+                    description,
+                    rateLimit,
+                    expiresInDays: expiresInDays || null,
+                    permissions
+                };
 
-        // Test endpoint
-        async function testEndpoint(endpoint, method, params) {
-            const button = event.target;
-            const responseContainer = document.getElementById(`response_${endpoint.replace(/[^a-zA-Z0-9]/g, '_')}`);
-
-            // Get parameter values
-            const queryParams = params.map(param => {
-                const input = document.getElementById(`${endpoint.replace(/[^a-zA-Z0-9]/g, '_')}_${param}`);
-                return input ? input.value : '';
-            }).filter(value => value).join('&');
-
-            // Build URL
-            const baseUrl = 'http://localhost:3000';
-            const url = `${baseUrl}${endpoint}${queryParams ? '?' + queryParams : ''}`;
-
-            // Show loading state
-            button.disabled = true;
-            button.innerHTML = '🔄 Carregando... <span class="loading"></span>';
-            responseContainer.innerHTML = '<pre style="color: rgba(255, 255, 255, 0.5);">Carregando...</pre>';
-
-            try {
-                const startTime = Date.now();
-                const response = await fetch(url);
-                const endTime = Date.now();
-                const data = await response.json();
-                const responseTime = endTime - startTime;
-
-                // Log request to dashboard
-                fetch('http://localhost:3003/api/log-request', {
+                fetch('/api/keys/create', {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'application/json',
+                        'X-API-Key': checkAuth()
                     },
-                    body: JSON.stringify({
-                        endpoint: endpoint,
-                        method: method,
-                        statusCode: response.status,
-                        responseTime: responseTime,
-                        requestData: {}
+                    body: JSON.stringify(data)
+                })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.success) {
+                            alert('✅ API Key criada com sucesso!');
+                            closeModal();
+                            loadApiKeys();
+                        } else {
+                            alert('❌ Erro: ' + data.message);
+                        }
                     })
+                    .catch(error => {
+                        console.error('Erro ao criar API Key:', error);
+                        alert('❌ Erro ao criar API Key');
+                    });
+            }
+
+            function deleteApiKey(keyId) {
+                if (!confirm('Tem certeza que deseja deletar esta API Key?')) {
+                    return;
+                }
+
+                fetch(`/api/keys/${keyId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'X-API-Key': checkAuth()
+                    }
+                })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.success) {
+                            alert('✅ API Key deletada com sucesso!');
+                            if (document.getElementById('viewKeyModal').style.display === 'flex') {
+                                closeModal();
+                            }
+                            loadApiKeys();
+                        } else {
+                            alert('❌ Erro: ' + data.message);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Erro ao deletar API Key:', error);
+                        alert('❌ Erro ao deletar API Key');
+                    });
+            }
+
+            function copyApiKey() {
+                const key = document.getElementById('viewApiKeyFull').value;
+                navigator.clipboard.writeText(key).then(() => {
+                    alert('📋 API Key copiada!');
+                    document.getElementById('copyBtn').textContent = '✓ Copiado!';
+                }).catch(err => {
+                    alert('❌ Erro ao copiar: ' + err.message);
                 });
 
-                // Display response
-                responseContainer.innerHTML = `
-                    <pre style="color: var(--success); margin-bottom: 8px;">✅ Status: ${response.status} - ${response.statusText}</pre>
-                    <pre style="color: rgba(255, 255, 255, 0.7); margin-bottom: 8px;">⏱️ Tempo de Resposta: ${responseTime}ms</pre>
-                    <pre>${JSON.stringify(data, null, 2)}</pre>
-                `;
-            } catch (error) {
-                responseContainer.innerHTML = `
-                    <pre style="color: var(--danger);">❌ Erro: ${error.message}</pre>
-                    <pre style="color: rgba(255, 255, 255, 0.7);">Verifique se o servidor da API está rodando em http://localhost:3000</pre>
-                `;
-            } finally {
-                button.disabled = false;
-                button.innerHTML = '🚀 Testar Endpoint';
+                setTimeout(() => {
+                    document.getElementById('copyBtn').textContent = '📋 Copiar';
+                }, 2000);
             }
-        }
 
-        // Clear logs
-        function clearLogs() {
-            if (socket.connected) {
-                socket.emit('clear:history');
+            function searchApiKeys() {
+                const query = document.getElementById('apiKeySearch').value.trim().toLowerCase();
+                
+                const filtered = apiKeys.filter(key => 
+                    key.name.toLowerCase().includes(query) ||
+                    key.id.toLowerCase().includes(query)
+                );
+
+                renderApiKeysList(filtered);
             }
-            document.getElementById('recentRequests').innerHTML = '<p style="color: rgba(255, 255, 255, 0.5); text-align: center;">Logs limpos</p>';
-            document.getElementById('fullLogs').innerHTML = '<p style="color: rgba(255, 255, 255, 0.5); text-align: center;">Logs limpos</p>';
-        }
 
-        // Export logs
-        function exportLogs() {
-            const logsData = JSON.stringify(currentMetrics.recentRequests, null, 2);
-            const blob = new Blob([logsData], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `api-logs-${new Date().toISOString().split('T')[0]}.json`;
-            a.click();
-            URL.revokeObjectURL(url);
-        }
+            // Logs functions
+            function loadLogs() {
+                fetch('/logs')
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.success) {
+                            updateLogs(data.data);
+                        } else {
+                            console.error('Erro ao carregar logs:', data.message);
+                        }
+                    });
+            }
 
-        // Initialize on load
-        window.addEventListener('load', () => {
-            initCharts();
-            loadDocumentation();
-        });
-    </script>
+            function updateLogs(logs) {
+                const container = document.getElementById('logsContainer');
+                
+                if (!logs || logs.length === 0) {
+                    container.innerHTML = '<p style="text-align: center; color: rgba(255,255,255,0.5);">Nenhum log ainda.</p>';
+                    return;
+                }
+
+                let html = '';
+                logs.forEach(log => {
+                    const timestamp = new Date(log.timestamp).toLocaleString('pt-BR');
+                    const statusClass = log.statusCode >= 200 && log.statusCode < 400 ? 'success' : 'error';
+                    const statusText = log.statusCode >= 200 && log.statusCode < 400 ? '✓ Sucesso' : '❌ Erro';
+                    
+                    html += `
+                        <div class="log-entry ${statusClass}">
+                            <span class="log-timestamp">${timestamp}</span>
+                            <span class="log-endpoint">${log.method} ${log.endpoint}</span>
+                            <span class="log-status ${statusClass}">${statusText}</span>
+                            <span class="log-status ${statusClass}">${log.statusCode}</span>
+                            <span>-</span>
+                            ${log.message || log.response || 'N/A'}
+                        </div>
+                    `;
+                });
+
+                container.innerHTML = html;
+            }
+
+            // Load all data on page load
+            window.addEventListener('load', () => {
+                if (!checkAuth()) {
+                    return;
+                }
+
+                loadAllData();
+            });
+        </script>
+    </div>
 </body>
 </html>
