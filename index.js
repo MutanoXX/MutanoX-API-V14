@@ -3,11 +3,9 @@ import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import { logger, log } from './utils/logger.js';
-import { apiKeyAuthMiddleware, apiLoggingMiddleware, streamingLoggingMiddleware } from './utils/api-key-auth.js';
-
-// Import API Keys endpoints
-import { generateApiKey, listApiKeys, revokeApiKey, activateApiKey, deleteApiKey, getApiKeyStats } from './endpoints/api-keys/manage.js';
-import { getGlobalStats, clearOldLogs } from './endpoints/api-keys/stats.js';
+import { loggingMiddleware } from './utils/dashboard-logger.js';
+import { authMiddleware, optionalAuthMiddleware, deactivateExpiredKeys } from './utils/auth-new.js';
+import { incrementUsage } from './utils/apiKeys.js';
 
 // Import endpoints
 import { bypassCloudflare } from './endpoints/tools/bypass.js';
@@ -29,6 +27,9 @@ import { douyinSearch } from './endpoints/search/douyin.js';
 import { githubSearch } from './endpoints/search/github.js';
 import { googleImageSearch } from './endpoints/search/gimage.js';
 
+// Import API Keys endpoints
+import { createApiKeysEndpoint, listApiKeysEndpoint, getApiKeyEndpoint, updateApiKeyEndpoint, deleteApiKeyEndpoint, getApiKeysStatsEndpoint, resetApiKeyUsageEndpoint } from './endpoints/apikeys/index.js';
+
 // Initialize Express
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -43,19 +44,18 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(logger);
 
-// API Logging middleware - Registra requisições de endpoints normais
-app.use(apiLoggingMiddleware);
-
 // Dashboard logging middleware - Logs todas as requisições para o dashboard em tempo real
+// Nota: Este middleware é aplicado globalmente. Para logar apenas endpoints /api/*,
+// mova esta linha depois da definição dos endpoints de sistema (/health, /)
 app.use(loggingMiddleware);
 
-// Rate limiting global (para requisições sem API Key válida)
+// Rate limiting para requisições sem API Key
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 100, // limit each IP to 100 requests per windowMs
   message: {
     success: false,
-    message: 'Too many requests from this IP, please try again later.'
+    message: 'Too many requests from this IP. Get an API Key at /api/keys/create for higher limits.'
   }
 });
 
@@ -69,21 +69,21 @@ app.get('/', (req, res) => {
     description: 'Premium API with multiple endpoints for various services',
     author: 'MutanoX',
     authentication: {
-      type: 'API Key',
+      type: 'API Keys',
+      header: 'X-API-Key',
       required: true,
-      headerName: 'X-API-Key',
-      documentation: '/api/api-keys/docs'
+      docs: '/api/keys',
+      example: 'curl -H "X-API-Key: mk_abc123..." http://localhost:3000/api/ai/chat'
     },
     endpoints: {
       apiKeys: {
-        'POST /api/api-keys/generate': 'Gerar nova API Key',
-        'GET /api/api-keys/list': 'Listar todas as API Keys',
-        'POST /api/api-keys/revoke/:keyId': 'Revogar API Key',
-        'POST /api/api-keys/activate/:keyId': 'Ativar API Key',
-        'DELETE /api/api-keys/delete/:keyId': 'Deletar API Key',
-        'GET /api/api-keys/stats/:keyId': 'Estatísticas da API Key',
-        'GET /api/api-keys/global-stats': 'Estatísticas globais',
-        'DELETE /api/api-keys/clear-logs': 'Limpar logs antigos'
+        'POST /api/keys/create': 'Criar nova API Key',
+        'GET /api/keys': 'Listar todas as API Keys',
+        'GET /api/keys/:id': 'Buscar API Key específica',
+        'PUT /api/keys/:id': 'Atualizar API Key',
+        'DELETE /api/keys/:id': 'Deletar API Key',
+        'GET /api/keys/stats': 'Estatísticas de todas as API Keys',
+        'POST /api/keys/:id/reset-usage': 'Resetar estatísticas de API Key'
       },
       tools: {
         '/api/tools/bypass': 'Cloudflare Bypass',
@@ -125,90 +125,87 @@ app.get('/health', (req, res) => {
 
 // ==================== API KEYS ENDPOINTS ====================
 
-// Gerar nova API Key
-app.post('/api/api-keys/generate', apiKeyAuthMiddleware, generateApiKey);
+// Criar nova API Key
+app.post('/api/keys/create', authMiddleware, createApiKeysEndpoint);
 
 // Listar todas as API Keys
-app.get('/api/api-keys/list', apiKeyAuthMiddleware, listApiKeys);
+app.get('/api/keys', authMiddleware, listApiKeysEndpoint);
 
-// Revogar API Key
-app.post('/api/api-keys/revoke/:keyId', apiKeyAuthMiddleware, revokeApiKey);
+// Buscar API Key específica
+app.get('/api/keys/:id', authMiddleware, getApiKeyEndpoint);
 
-// Ativar API Key
-app.post('/api/api-keys/activate/:keyId', apiKeyAuthMiddleware, activateApiKey);
+// Atualizar API Key
+app.put('/api/keys/:id', authMiddleware, updateApiKeyEndpoint);
 
 // Deletar API Key
-app.delete('/api/api-keys/delete/:keyId', apiKeyAuthMiddleware, deleteApiKey);
+app.delete('/api/keys/:id', authMiddleware, deleteApiKeyEndpoint);
 
-// Estatísticas de uma API Key específica
-app.get('/api/api-keys/stats/:keyId', apiKeyAuthMiddleware, getApiKeyStats);
+// Estatísticas de API Keys
+app.get('/api/keys/stats', authMiddleware, getApiKeysStatsEndpoint);
 
-// Estatísticas globais
-app.get('/api/api-keys/global-stats', apiKeyAuthMiddleware, getGlobalStats);
-
-// Limpar logs antigos
-app.delete('/api/api-keys/clear-logs', apiKeyAuthMiddleware, clearOldLogs);
+// Resetar estatísticas de uso
+app.post('/api/keys/:id/reset-usage', authMiddleware, resetApiKeyUsageEndpoint);
 
 // ==================== TOOLS ENDPOINTS ====================
 
 // Cloudflare Bypass
-app.get('/api/tools/bypass', apiKeyAuthMiddleware, bypassCloudflare);
+app.get('/api/tools/bypass', authMiddleware, bypassCloudflare);
 
 // Discord Stalk
-app.get('/api/tools/stalkDiscord', apiKeyAuthMiddleware, stalkDiscord);
+app.get('/api/tools/stalkDiscord', authMiddleware, stalkDiscord);
 
 // ==================== AI ENDPOINTS ====================
 
 // AI Chat (GET and POST for streaming)
-app.get('/api/ai/chat', apiKeyAuthMiddleware, chatAI);
-app.post('/api/ai/chat', apiKeyAuthMiddleware, chatAI);
+app.get('/api/ai/chat', authMiddleware, chatAI);
+app.post('/api/ai/chat', authMiddleware, chatAI);
 
 // Perplexity AI
-app.get('/api/ai/perplexity', apiKeyAuthMiddleware, perplexityAI);
+app.get('/api/ai/perplexity', authMiddleware, perplexityAI);
 
 // Cici AI
-app.get('/api/ai/cici', apiKeyAuthMiddleware, ciciAI);
+app.get('/api/ai/cici', authMiddleware, ciciAI);
 
 // Felo AI
-app.get('/api/ai/felo', apiKeyAuthMiddleware, feloAI);
+app.get('/api/ai/felo', authMiddleware, feloAI);
 
 // Jeeves AI
-app.get('/api/ai/jeeves', apiKeyAuthMiddleware, jeevesAI);
+app.get('/api/ai/jeeves', authMiddleware, jeevesAI);
 
 // ==================== SEARCH ENDPOINTS ====================
 
 // Brainly Search
-app.get('/api/search/brainly', apiKeyAuthMiddleware, brainlySearch);
+app.get('/api/search/brainly', authMiddleware, brainlySearch);
 
 // Douyin Search
-app.get('/api/search/douyin', apiKeyAuthMiddleware, douyinSearch);
+app.get('/api/search/douyin', authMiddleware, douyinSearch);
 
 // GitHub Search
-app.get('/api/search/github', apiKeyAuthMiddleware, githubSearch);
+app.get('/api/search/github', authMiddleware, githubSearch);
 
 // Google Image Search
-app.get('/api/search/gimage', apiKeyAuthMiddleware, googleImageSearch);
+app.get('/api/search/gimage', authMiddleware, googleImageSearch);
 
 // ==================== BRAZIL ENDPOINTS ====================
 
 // Free Fire Info
-app.get('/api/br/infoff', apiKeyAuthMiddleware, getFreeFireInfo);
+app.get('/api/br/infoff', authMiddleware, getFreeFireInfo);
 
 // Phone Number Query
-app.get('/api/br/numero', apiKeyAuthMiddleware, queryPhone);
+app.get('/api/br/numero', authMiddleware, queryPhone);
 
 // Full Name Query
-app.get('/api/br/nome-completo', apiKeyAuthMiddleware, queryFullName);
+app.get('/api/br/nome-completo', authMiddleware, queryFullName);
 
 // CPF Query
-app.get('/api/br/consultarcpf', apiKeyAuthMiddleware, queryCPF);
+app.get('/api/br/consultarcpf', authMiddleware, queryCPF);
 
 // 404 handler
 app.use((req, res) => {
   res.status(404).json({
     success: false,
     message: 'Endpoint not found',
-    availableEndpoints: '/health, /api/api-keys/*',
+    availableEndpoints: '/health, /api/keys/*, /api/tools/*, /api/ai/*, /api/search/*, /api/br/*',
     documentation: 'See README.md for detailed documentation'
   });
 });
@@ -229,5 +226,8 @@ app.listen(PORT, () => {
   log.info(`📚 Documentation available at http://localhost:${PORT}/`);
   log.info(`🔑 Sistema de autenticação: API Keys ativado`);
 });
+
+// Desativar chaves expiradas periodicamente (a cada 5 minutos)
+setInterval(deactivateExpiredKeys, 5 * 60 * 1000);
 
 export default app;
