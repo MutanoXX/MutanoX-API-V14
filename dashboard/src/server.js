@@ -4,6 +4,7 @@ import { Server } from 'socket.io';
 import cors from 'cors';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+import { verifyToken } from '../../utils/auth.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -182,6 +183,33 @@ app.get('/api/endpoints', (req, res) => {
 });
 
 // Socket.io connection handling
+io.use((socket, next) => {
+  try {
+    // Verificar token na conexão WebSocket
+    const auth = socket.handshake.auth;
+    const token = auth.token;
+
+    if (!token) {
+      return next(new Error('Token de autenticação não fornecido'));
+    }
+
+    // Verificar token
+    const verification = verifyToken(token);
+
+    if (!verification.valid) {
+      return next(new Error('Token inválido ou expirado'));
+    }
+
+    // Adicionar informações do usuário ao socket
+    socket.user = verification.decoded;
+    console.log(`✅ Usuário autenticado: ${verification.decoded.username}`);
+    next();
+  } catch (error) {
+    console.error('Erro na autenticação WebSocket:', error);
+    next(error);
+  }
+});
+
 io.on('connection', (socket) => {
   metrics.activeConnections++;
   console.log(`Client connected. Total connections: ${metrics.activeConnections}`);

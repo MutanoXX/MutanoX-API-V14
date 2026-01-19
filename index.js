@@ -4,6 +4,10 @@ import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import { logger, log } from './utils/logger.js';
 import { loggingMiddleware } from './utils/dashboard-logger.js';
+import { authMiddleware, optionalAuthMiddleware } from './utils/auth.js';
+
+// Import auth endpoints
+import { login, verifyTokenEndpoint, logout } from './endpoints/auth/login.js';
 
 // Import endpoints
 import { bypassCloudflare } from './endpoints/tools/bypass.js';
@@ -54,6 +58,16 @@ const limiter = rateLimit({
   }
 });
 
+// Rate limiting específico para login (mais restrito)
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 10, // limit each IP to 10 login attempts per windowMs
+  message: {
+    success: false,
+    message: 'Muitas tentativas de login. Tente novamente mais tarde.'
+  }
+});
+
 app.use('/api/', limiter);
 
 // Root endpoint
@@ -63,6 +77,15 @@ app.get('/', (req, res) => {
     version: '14.0.0',
     description: 'Premium API with multiple endpoints for various services',
     author: 'MutanoX',
+    authentication: {
+      required: true,
+      loginEndpoint: '/api/auth/login',
+      method: 'POST',
+      credentials: {
+        username: 'ADMIN',
+        password: 'MutanoX3397'
+      }
+    },
     endpoints: {
       tools: {
         '/api/tools/bypass': 'Cloudflare Bypass',
@@ -88,6 +111,11 @@ app.get('/', (req, res) => {
         '/api/br/consultarcpf': 'CPF Query'
       }
     },
+    auth: {
+      '/api/auth/login': 'Login (POST)',
+      '/api/auth/verify': 'Verify Token (POST)',
+      '/api/auth/logout': 'Logout (POST)'
+    },
     documentation: 'See README.md for detailed documentation'
   });
 });
@@ -102,59 +130,70 @@ app.get('/health', (req, res) => {
   });
 });
 
+// ==================== AUTH ENDPOINTS ====================
+
+// Login - Sem autenticação requerida
+app.post('/api/auth/login', loginLimiter, login);
+
+// Verify Token - Sem autenticação requerida
+app.post('/api/auth/verify', verifyTokenEndpoint);
+
+// Logout - Requer autenticação
+app.post('/api/auth/logout', authMiddleware, logout);
+
 // ==================== TOOLS ENDPOINTS ====================
 
 // Cloudflare Bypass
-app.get('/api/tools/bypass', bypassCloudflare);
+app.get('/api/tools/bypass', authMiddleware, bypassCloudflare);
 
 // Discord Stalk
-app.get('/api/tools/stalkDiscord', stalkDiscord);
+app.get('/api/tools/stalkDiscord', authMiddleware, stalkDiscord);
 
 // ==================== AI ENDPOINTS ====================
 
 // AI Chat (GET and POST for streaming)
-app.get('/api/ai/chat', chatAI);
-app.post('/api/ai/chat', chatAI);
+app.get('/api/ai/chat', authMiddleware, chatAI);
+app.post('/api/ai/chat', authMiddleware, chatAI);
 
 // Perplexity AI
-app.get('/api/ai/perplexity', perplexityAI);
+app.get('/api/ai/perplexity', authMiddleware, perplexityAI);
 
 // Cici AI
-app.get('/api/ai/cici', ciciAI);
+app.get('/api/ai/cici', authMiddleware, ciciAI);
 
 // Felo AI
-app.get('/api/ai/felo', feloAI);
+app.get('/api/ai/felo', authMiddleware, feloAI);
 
 // Jeeves AI
-app.get('/api/ai/jeeves', jeevesAI);
+app.get('/api/ai/jeeves', authMiddleware, jeevesAI);
 
 // ==================== SEARCH ENDPOINTS ====================
 
 // Brainly Search
-app.get('/api/search/brainly', brainlySearch);
+app.get('/api/search/brainly', authMiddleware, brainlySearch);
 
 // Douyin Search
-app.get('/api/search/douyin', douyinSearch);
+app.get('/api/search/douyin', authMiddleware, douyinSearch);
 
 // GitHub Search
-app.get('/api/search/github', githubSearch);
+app.get('/api/search/github', authMiddleware, githubSearch);
 
 // Google Image Search
-app.get('/api/search/gimage', googleImageSearch);
+app.get('/api/search/gimage', authMiddleware, googleImageSearch);
 
 // ==================== BRAZIL ENDPOINTS ====================
 
 // Free Fire Info
-app.get('/api/br/infoff', getFreeFireInfo);
+app.get('/api/br/infoff', authMiddleware, getFreeFireInfo);
 
 // Phone Number Query
-app.get('/api/br/numero', queryPhone);
+app.get('/api/br/numero', authMiddleware, queryPhone);
 
 // Full Name Query
-app.get('/api/br/nome-completo', queryFullName);
+app.get('/api/br/nome-completo', authMiddleware, queryFullName);
 
 // CPF Query
-app.get('/api/br/consultarcpf', queryCPF);
+app.get('/api/br/consultarcpf', authMiddleware, queryCPF);
 
 // 404 handler
 app.use((req, res) => {

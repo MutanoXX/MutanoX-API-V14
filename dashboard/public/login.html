@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MutanoX-API v14 - Login</title>
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #8b5cf6;
+            --success: #10b981;
+            --danger: #ef4444;
+            --dark: #1e1b4b;
+            --dark-lighter: #312e81;
+            --light: #f3f4f6;
+            --white: #ffffff;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, var(--dark) 0%, var(--dark-lighter) 100%);
+            color: var(--light);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .login-container {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 420px;
+            width: 100%;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        .login-header {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+
+        .login-header h1 {
+            font-size: 2rem;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 8px;
+        }
+
+        .login-header p {
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 0.95rem;
+        }
+
+        .form-group {
+            margin-bottom: 24px;
+        }
+
+        .form-label {
+            display: block;
+            color: var(--light);
+            font-size: 0.9rem;
+            font-weight: 500;
+            margin-bottom: 8px;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 14px 16px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            color: var(--white);
+            font-size: 1rem;
+            transition: all 0.3s;
+        }
+
+        .form-input::placeholder {
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.3);
+        }
+
+        .login-button {
+            width: 100%;
+            padding: 16px;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            border: none;
+            border-radius: 12px;
+            color: var(--white);
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .login-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(99, 102, 241, 0.4);
+        }
+
+        .login-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .loading-spinner {
+            width: 20px;
+            height: 20px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: var(--white);
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .error-message {
+            background: rgba(239, 68, 68, 0.2);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            border-radius: 8px;
+            padding: 12px 16px;
+            margin-bottom: 20px;
+            color: #fca5a5;
+            font-size: 0.9rem;
+            display: none;
+        }
+
+        .error-message.show {
+            display: block;
+            animation: shake 0.5s ease-in-out;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            75% { transform: translateX(10px); }
+        }
+
+        .security-features {
+            margin-top: 32px;
+            padding-top: 24px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .security-title {
+            color: var(--secondary);
+            font-size: 0.9rem;
+            font-weight: 600;
+            margin-bottom: 16px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .security-features-list {
+            list-style: none;
+        }
+
+        .security-feature {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 8px 0;
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 0.85rem;
+        }
+
+        .security-feature::before {
+            content: '✓';
+            color: var(--success);
+            font-weight: bold;
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 24px;
+            padding-top: 20px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            color: rgba(255, 255, 255, 0.5);
+            font-size: 0.8rem;
+        }
+
+        .footer a {
+            color: var(--primary);
+            text-decoration: none;
+            transition: color 0.3s;
+        }
+
+        .footer a:hover {
+            color: var(--secondary);
+        }
+
+        .version-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            background: rgba(99, 102, 241, 0.2);
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-top: 8px;
+        }
+
+        @media (max-width: 480px) {
+            .login-container {
+                padding: 30px 20px;
+            }
+
+            .login-header h1 {
+                font-size: 1.6rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <div class="login-header">
+            <h1>🔐 MutanoX-API v14</h1>
+            <p>Acesse o dashboard de monitoramento</p>
+            <div class="version-badge">v14.0.0</div>
+        </div>
+
+        <div class="error-message" id="errorMessage"></div>
+
+        <form id="loginForm" onsubmit="handleLogin(event)">
+            <div class="form-group">
+                <label class="form-label" for="username">Username</label>
+                <input 
+                    type="text" 
+                    id="username" 
+                    class="form-input" 
+                    placeholder="Digite seu username"
+                    required
+                    autocomplete="username"
+                    autofocus
+                >
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="password">Password</label>
+                <input 
+                    type="password" 
+                    id="password" 
+                    class="form-input" 
+                    placeholder="Digite sua password"
+                    required
+                    autocomplete="current-password"
+                >
+            </div>
+
+            <button type="submit" class="login-button" id="loginButton">
+                <span id="buttonText">Entrar</span>
+            </button>
+        </form>
+
+        <div class="security-features">
+            <div class="security-title">🔒 Recursos de Segurança</div>
+            <ul class="security-features-list">
+                <li class="security-feature">Autenticação JWT com token de 24h</li>
+                <li class="security-feature">Proteção contra brute force</li>
+                <li class="security-feature">Rate limiting ativo</li>
+                <li class="security-feature">Criptografia de senhas</li>
+                <li class="security-feature">Sessões seguras e monitoradas</li>
+            </ul>
+        </div>
+
+        <div class="footer">
+            <p>© 2024 MutanoX-API v14 | <a href="/">Documentação</a></p>
+        </div>
+    </div>
+
+    <script>
+        /**
+         * MEGA PROMPT: Criar tela de login segura e funcional
+
+         REQUISITOS:
+         - Validar credenciais com API backend
+         - Armazenar token JWT no localStorage
+         - Redirecionar para dashboard após login bem-sucedido
+         - Mostrar erros de forma clara e amigável
+         - Proteger contra ataques de CSRF
+         - Implementar loading states
+         - Validação de formulário no cliente
+
+         IMPLEMENTAÇÃO:
+         - Função de login assíncrona
+         - Validação de campos obrigatórios
+         - Tratamento de erros específicos
+         - Loading spinner durante requisição
+         - Redirecionamento automático
+         - Limpeza de formulário após login
+         */
+
+        let isLoggedIn = false;
+
+        // Verificar se já está logado
+        function checkAuth() {
+            const token = localStorage.getItem('token');
+            const user = localStorage.getItem('user');
+            
+            if (token && user) {
+                // Verificar se o token é válido
+                verifyTokenWithServer(token);
+            }
+        }
+
+        // Verificar token com o servidor
+        async function verifyTokenWithServer(token) {
+            try {
+                const response = await fetch('http://localhost:3000/api/auth/verify', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ token })
+                });
+
+                const data = await response.json();
+                
+                if (data.success && data.data.valid) {
+                    // Token válido, redirecionar para dashboard
+                    isLoggedIn = true;
+                    window.location.href = 'index.html';
+                } else {
+                    // Token inválido ou expirado, limpar localStorage
+                    localStorage.removeItem('token');
+                    localStorage.removeItem('user');
+                }
+            } catch (error) {
+                console.error('Erro ao verificar token:', error);
+                // Não limpar localStorage em caso de erro de rede
+            }
+        }
+
+        // Manipular login
+        async function handleLogin(event) {
+            event.preventDefault();
+
+            if (isLoggedIn) {
+                return;
+            }
+
+            const username = document.getElementById('username').value.trim();
+            const password = document.getElementById('password').value;
+            const loginButton = document.getElementById('loginButton');
+            const buttonText = document.getElementById('buttonText');
+            const errorMessage = document.getElementById('errorMessage');
+
+            // Validação básica
+            if (!username || !password) {
+                showError('Por favor, preencha todos os campos.');
+                return;
+            }
+
+            if (username.length < 3 || password.length < 6) {
+                showError('Username ou password inválidos.');
+                return;
+            }
+
+            // Desabilitar botão e mostrar loading
+            loginButton.disabled = true;
+            buttonText.innerHTML = '<div class="loading-spinner"></div> Entrando...';
+            errorMessage.classList.remove('show');
+
+            try {
+                // Fazer requisição de login
+                const response = await fetch('http://localhost:3000/api/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        username: username,
+                        password: password
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    // Login bem-sucedido
+                    const token = data.data.token;
+                    const user = data.data.user;
+
+                    // Armazenar token e usuário no localStorage
+                    localStorage.setItem('token', token);
+                    localStorage.setItem('user', JSON.stringify(user));
+                    localStorage.setItem('loginAt', new Date().toISOString());
+
+                    // Mostrar mensagem de sucesso
+                    buttonText.textContent = '✓ Sucesso!';
+                    
+                    // Redirecionar para dashboard após breve delay
+                    setTimeout(() => {
+                        window.location.href = 'index.html';
+                    }, 1000);
+
+                } else {
+                    // Login falhou
+                    showError(data.message || 'Credenciais inválidas');
+                    loginButton.disabled = false;
+                    buttonText.textContent = 'Entrar';
+                }
+            } catch (error) {
+                console.error('Erro de login:', error);
+                showError('Erro ao conectar com o servidor. Tente novamente.');
+                loginButton.disabled = false;
+                buttonText.textContent = 'Entrar';
+            }
+        }
+
+        // Mostrar mensagem de erro
+        function showError(message) {
+            const errorMessage = document.getElementById('errorMessage');
+            errorMessage.textContent = '❌ ' + message;
+            errorMessage.classList.add('show');
+
+            // Ocultar após 5 segundos
+            setTimeout(() => {
+                errorMessage.classList.remove('show');
+            }, 5000);
+        }
+
+        // Detectar tecla Enter para focar no campo apropriado
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                const activeElement = document.activeElement;
+                
+                if (activeElement.id === 'username') {
+                    document.getElementById('password').focus();
+                }
+            }
+        });
+
+        // Verificar autenticação ao carregar a página
+        window.addEventListener('load', checkAuth);
+    </script>
+</body>
+</html>

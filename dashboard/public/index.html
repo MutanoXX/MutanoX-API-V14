@@ -527,9 +527,27 @@
                         <span>👥</span>
                         <span id="activeConnections">0</span> conexões ativas
                     </div>
+                    <div class="connection-status" id="userInfo" style="display: none;">
+                        <span>👤</span>
+                        <span id="username"></span>
+                    </div>
+                    <button class="connection-status" id="logoutButton" onclick="logout()" style="background: rgba(239, 68, 68, 0.2); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 20px; padding: 8px 16px; color: #fca5a5; cursor: pointer; transition: all 0.3s;">
+                        <span>🚪 Logout</span>
+                    </button>
                 </div>
             </div>
         </header>
+
+        <script>
+            // Mostrar informações do usuário no header
+            const user = JSON.parse(localStorage.getItem('user') || '{}');
+            if (user.username) {
+                const userInfo = document.getElementById('userInfo');
+                const usernameSpan = document.getElementById('username');
+                userInfo.style.display = 'inline-flex';
+                usernameSpan.textContent = user.username;
+            }
+        </script>
 
         <div class="tabs">
             <button class="tab-btn active" onclick="showTab('dashboard')">📊 Dashboard</button>
@@ -630,8 +648,71 @@
     </div>
 
     <script>
+        /**
+         * MEGA PROMPT: Adicionar autenticação ao dashboard WebSocket
+
+         REQUISITOS:
+         - Verificar token JWT antes de conectar ao WebSocket
+         - Redirecionar para login se não autenticado
+         - Enviar token na conexão WebSocket
+         - Implementar logout funcional
+         - Atualizar UI baseado no status de autenticação
+         - Proteger todas as ações com autenticação
+
+         IMPLEMENTAÇÃO:
+         - Função checkAuth() para verificar token
+         - Função logout() para limpar sessão
+         - Modificar conexão WebSocket para enviar token
+         - Verificar token em cada requisição de teste
+         - UI de usuário logado no header
+         */
+
+        // Verificar autenticação ao carregar
+        function checkAuth() {
+            const token = localStorage.getItem('token');
+            const user = localStorage.getItem('user');
+
+            if (!token || !user) {
+                // Não autenticado, redirecionar para login
+                window.location.href = 'login.html';
+                return false;
+            }
+
+            return {
+                token,
+                user: JSON.parse(user)
+            };
+        }
+
+        // Fazer logout
+        function logout() {
+            if (confirm('Tem certeza que deseja sair?')) {
+                localStorage.removeItem('token');
+                localStorage.removeItem('user');
+                localStorage.removeItem('loginAt');
+                
+                // Desconectar WebSocket
+                if (typeof socket !== 'undefined') {
+                    socket.disconnect();
+                }
+                
+                // Redirecionar para login
+                window.location.href = 'login.html';
+            }
+        }
+
+        // Verificar autenticação
+        const auth = checkAuth();
+        if (!auth) {
+            // Já redirecionado pelo checkAuth
+        }
+
         // WebSocket Connection
-        const socket = io('http://localhost:3003');
+        const socket = io('http://localhost:3003', {
+            auth: {
+                token: auth.token
+            }
+        });
         let isConnected = false;
 
         // Charts
