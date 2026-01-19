@@ -3,6 +3,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import { logger, log } from './utils/logger.js';
+import { loggingMiddleware } from './utils/dashboard-logger.js';
 
 // Import endpoints
 import { bypassCloudflare } from './endpoints/tools/bypass.js';
@@ -37,6 +38,7 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(logger);
+app.use(loggingMiddleware); // Dashboard logging middleware
 
 // Rate limiting
 const limiter = rateLimit({
